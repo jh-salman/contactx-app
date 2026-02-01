@@ -121,25 +121,15 @@ const cards = () => {
           errorMessage.toLowerCase().includes('table') ||
           errorMessage.toLowerCase().includes('database') ||
           errorMessage.toLowerCase().includes('prisma')) {
-        // Check if we have a recently created card to show
-        try {
-          const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
-          if (lastCreatedCardJson) {
-            const lastCreatedCard = JSON.parse(lastCreatedCardJson)
-            if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
-              // Show the created card even if fetch failed
-              setCards([lastCreatedCard])
-              setError(null)
-              console.log('✅ Showing recently created card despite database error. Card ID:', lastCreatedCard.id || lastCreatedCard._id)
-              return
-            } else {
-              console.warn('⚠️ Created card in storage missing ID')
-            }
-          } else {
-            console.log('ℹ️ No created card found in storage')
-          }
-        } catch (e) {
-          console.warn('Failed to check for created card:', e)
+        // Check if we have a recently created card to show (already fetched at the beginning)
+        if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
+          // Show the created card even if fetch failed
+          setCards([lastCreatedCard])
+          setError(null)
+          console.log('✅ Showing recently created card despite database error. Card ID:', lastCreatedCard.id || lastCreatedCard._id)
+          return
+        } else {
+          console.log('ℹ️ No created card found in storage for error fallback')
         }
         // Server already handled the error gracefully, return empty array
         setCards([])
