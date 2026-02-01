@@ -95,16 +95,16 @@ const cards = () => {
       }
       
       // Always show cards if we have any (either from API or from AsyncStorage)
-      // If cardsData is empty but we have lastCreatedCard, show it
+      // cardsData already includes lastCreatedCard if it was added above
       if (Array.isArray(cardsData) && cardsData.length > 0) {
-        console.log('✅ Setting cards from API:', cardsData.length)
+        console.log('✅ Setting cards (from API + AsyncStorage):', cardsData.length)
         setCards(cardsData)
         setError(null)
-        // If we successfully got cards and list is not empty, clear AsyncStorage
+        // Clear AsyncStorage after successful display
         if (lastCreatedCard) {
           try {
             await AsyncStorage.removeItem('lastCreatedCard')
-            console.log('🗑️ Cleared created card from AsyncStorage (successful fetch)')
+            console.log('🗑️ Cleared created card from AsyncStorage (displayed successfully)')
           } catch (e) {
             console.warn('Failed to clear created card:', e)
           }
@@ -112,15 +112,7 @@ const cards = () => {
         return
       }
       
-      // If no cards from API but we have created card, show it
-      if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
-        console.log('📋 No cards from API, showing created card from storage. Card:', lastCreatedCard)
-        setCards([lastCreatedCard])
-        setError(null)
-        return
-      }
-      
-      // No cards at all
+      // No cards at all - neither from API nor AsyncStorage
       console.log('⚠️ No cards found - neither from API nor AsyncStorage')
       setCards([])
       setError(null)
