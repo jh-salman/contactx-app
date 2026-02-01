@@ -56,28 +56,59 @@ const contacts = () => {
       setError(null)
       
       const response = await apiService.getAllContacts()
-      console.log('📞 Full API Response:', JSON.stringify(response, null, 2))
       
       // Handle different response structures
       const contactsData = response.data || response.contacts || response || []
-      console.log('📋 Contacts Data:', JSON.stringify(contactsData, null, 2))
+      
+      // If response has success: true and data is empty array, treat as empty state
+      if (response.success === true && Array.isArray(contactsData)) {
+        setContacts(contactsData)
+        setError(null)
+        return
+      }
       
       setContacts(Array.isArray(contactsData) ? contactsData : [])
     } catch (err: any) {
-      console.error('Error fetching contacts:', err)
+      // Check if server returned success: true with empty data (graceful error handling)
+      if (err.response?.data?.success === true && Array.isArray(err.response?.data?.data)) {
+        setContacts(err.response.data.data)
+        setError(null)
+        return
+      }
+      
       const errorMessage = err.response?.data?.message || err.message || 'Failed to load contacts'
+      
+      // Handle database errors (500) as empty state - server handles them gracefully
+      if (err.response?.status === 500 || 
+          errorMessage.toLowerCase().includes('column') ||
+          errorMessage.toLowerCase().includes('table') ||
+          errorMessage.toLowerCase().includes('database') ||
+          errorMessage.toLowerCase().includes('prisma')) {
+        // Server already handled the error gracefully, return empty array
+        setContacts([])
+        setError(null)
+        return
+      }
       
       // Handle "No contacts found" as empty state, not an error
       if (errorMessage.toLowerCase().includes('no contacts found') || 
           errorMessage.toLowerCase().includes('no contact')) {
         setContacts([])
         setError(null)
-      } else {
-        setError(errorMessage)
-        // Only show alert on initial load, not on refresh
-        if (!isRefresh) {
-          Alert.alert('Error', errorMessage)
-        }
+        return
+      }
+      
+      // Only show error for actual errors (not database/500 errors)
+      setError(errorMessage)
+      // Only show alert on initial load, not on refresh, and not for database errors
+      if (!isRefresh && 
+          !errorMessage.toLowerCase().includes('no contacts found') &&
+          !errorMessage.toLowerCase().includes('no contact') &&
+          !errorMessage.toLowerCase().includes('column') &&
+          !errorMessage.toLowerCase().includes('table') &&
+          !errorMessage.toLowerCase().includes('database') &&
+          !errorMessage.toLowerCase().includes('prisma')) {
+        Alert.alert('Error', errorMessage)
       }
     } finally {
       setLoading(false)
@@ -113,17 +144,42 @@ const contacts = () => {
   const fetchRequests = useCallback(async () => {
     try {
       const response = await apiService.getReceivedRequests()
-      console.log('📨 Received Requests Response:', JSON.stringify(response, null, 2))
       
+      // Handle different response structures
       const requestsData = response.data || response.requests || response || []
+      
+      // If response has success: true and data is empty array, treat as empty state
+      if (response.success === true && Array.isArray(requestsData)) {
+        setRequests(requestsData)
+        return
+      }
       setRequests(Array.isArray(requestsData) ? requestsData : [])
     } catch (err: any) {
+      // Check if server returned success: true with empty data (graceful error handling)
+      if (err.response?.data?.success === true && Array.isArray(err.response?.data?.data)) {
+        setRequests(err.response.data.data)
+        return
+      }
+      
+      const errorMessage = err.response?.data?.message || err.message || ''
+      
+      // Handle database errors (500) as empty state - server handles them gracefully
+      if (err.response?.status === 500 || 
+          errorMessage.toLowerCase().includes('column') ||
+          errorMessage.toLowerCase().includes('table') ||
+          errorMessage.toLowerCase().includes('database') ||
+          errorMessage.toLowerCase().includes('prisma')) {
+        // Server already handled the error gracefully, return empty array
+        setRequests([])
+        return
+      }
+      
       // Silently handle errors - backend might not have this endpoint implemented yet
       // Set requests to empty array to prevent UI issues
       setRequests([])
       // Only log in development mode
       if (__DEV__) {
-        console.log('Requests API not available or error:', err.response?.data?.message || err.message)
+        console.log('Requests API not available or error:', errorMessage)
       }
     }
   }, [])

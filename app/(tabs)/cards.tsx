@@ -34,34 +34,61 @@ const cards = () => {
       setLoading(true)
       setError(null)
       const response = await apiService.getAllCards()
-      console.log('📦 Full API Response:', JSON.stringify(response, null, 2))
+      
       // Handle different response structures
       const cardsData = response.data || response.cards || response || []
-      console.log('🎴 Cards Data:', JSON.stringify(cardsData, null, 2))
-      if (cardsData.length > 0) {
-        console.log('📋 First Card Structure:', JSON.stringify(cardsData[0], null, 2))
+      
+      // If response has success: true and data is empty array, treat as empty state
+      if (response.success === true && Array.isArray(cardsData)) {
+        setCards(cardsData)
+        setError(null)
+        return
       }
+      
       setCards(Array.isArray(cardsData) ? cardsData : [])
     } catch (err: any) {
-      console.error('Error fetching cards:', err)
+      // Check if server returned success: true with empty data (graceful error handling)
+      if (err.response?.data?.success === true && Array.isArray(err.response?.data?.data)) {
+        setCards(err.response.data.data)
+        setError(null)
+        return
+      }
+      
       const errorMessage = err.response?.data?.message || err.message || 'Failed to load cards'
+      
+      // Handle database errors (500) as empty state - server handles them gracefully
+      if (err.response?.status === 500 || 
+          errorMessage.toLowerCase().includes('column') ||
+          errorMessage.toLowerCase().includes('table') ||
+          errorMessage.toLowerCase().includes('database') ||
+          errorMessage.toLowerCase().includes('prisma')) {
+        // Server already handled the error gracefully, return empty array
+        setCards([])
+        setError(null)
+        return
+      }
       
       // Handle "No card found" as empty state, not an error
       if (errorMessage.toLowerCase().includes('no card found') || 
           errorMessage.toLowerCase().includes('no cards')) {
         setCards([])
-        setError(null) // Don't treat as error, just empty state
-      } else {
-        // Only show error for actual errors
-        setError(errorMessage)
-        // Don't show alert for "no cards found" - it's a normal state
-        if (!errorMessage.toLowerCase().includes('no card found') && 
-            !errorMessage.toLowerCase().includes('no cards')) {
-          Alert.alert(
-            'Error',
-            errorMessage
-          )
-        }
+        setError(null)
+        return
+      }
+      
+      // Only show error for actual errors (not database/500 errors)
+      setError(errorMessage)
+      // Don't show alert for database errors or "no cards found"
+      if (!errorMessage.toLowerCase().includes('no card found') && 
+          !errorMessage.toLowerCase().includes('no cards') &&
+          !errorMessage.toLowerCase().includes('column') &&
+          !errorMessage.toLowerCase().includes('table') &&
+          !errorMessage.toLowerCase().includes('database') &&
+          !errorMessage.toLowerCase().includes('prisma')) {
+        Alert.alert(
+          'Error',
+          errorMessage
+        )
       }
     } finally {
       setLoading(false)

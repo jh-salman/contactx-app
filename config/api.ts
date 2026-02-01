@@ -1,6 +1,6 @@
 // API Base URL Configuration
 const DEFAULT_API_URL = __DEV__ 
-  ? 'https://hwy-editorial-updates-talked.trycloudflare.com/api' // Development tunnel
+  ? 'https://contact-x-api.vercel.app/api' // Development tunnel
   : 'https://contact-x-api.vercel.app/api'; // Production Vercel
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;

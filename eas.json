@@ -17,7 +17,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://contact-x-api.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://hwy-editorial-updates-talked.trycloudflare.com/api"
       }
     },
     "production": {
@@ -26,7 +26,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://contact-x-api.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://hwy-editorial-updates-talked.trycloudflare.com/api"
       }
     }
   },

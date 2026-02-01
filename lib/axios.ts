@@ -8,36 +8,14 @@ if (__DEV__) {
 }
 
 // Get base URL without /api for Origin header
-// For mobile apps, Better Auth expects localhost as origin for local development
+// For mobile apps, Better Auth expects the API base URL as origin (not the API URL itself)
 const getOriginUrl = () => {
   // Extract host and port from API_BASE_URL
   const apiUrl = API_BASE_URL.replace('/api', '');
   
-  // For cloudflared/ngrok tunnels, use the tunnel URL as origin
-  if (apiUrl.includes('trycloudflare.com') || apiUrl.includes('ngrok.io') || apiUrl.includes('ngrok-free.app')) {
-    return apiUrl;
-  }
-  
-  // For Vercel URLs
-  if (apiUrl.includes('vercel.app')) {
-    return apiUrl;
-  }
-  
-  // For local IP addresses, use localhost as origin (Better Auth requirement)
-  if (apiUrl.includes('10.102.144.18') || apiUrl.includes('10.108.105.18') || apiUrl.includes('10.26.38.18') || apiUrl.includes('10.153.79.18')) {
-    // Extract port from URL
-    const portMatch = apiUrl.match(/:(\d+)/);
-    const port = portMatch ? portMatch[1] : '3004';
-    return `http://localhost:${port}`;
-  }
-  
-  // If already localhost, use as is
-  if (apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1')) {
-    return apiUrl;
-  }
-  
-  // Default fallback
-  return 'http://localhost:3004';
+  // For mobile apps, use the API base URL as origin
+  // This matches what Better Auth expects in trustedOrigins
+  return apiUrl;
 };
 
 // Create axios instance
@@ -59,18 +37,20 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
       
-      // Set Origin header - backend requires it
+      // Set Origin header for Better Auth
+      // For mobile apps, we send the API base URL as origin (which should be in trustedOrigins)
       if (config.headers) {
         const originUrl = getOriginUrl();
         
-        // For Android, ensure Origin is set correctly
-        // Android may strip Origin header, so we set multiple headers
+        // Set Origin header - Better Auth checks this against trustedOrigins
+        // For Vercel, mobile apps send the API URL itself as origin
         (config.headers as any).Origin = originUrl;
+        
+        // Additional headers for Android compatibility and Better Auth
         (config.headers as any)['X-Origin'] = originUrl;
         (config.headers as any)['X-Requested-Origin'] = originUrl;
         (config.headers as any)['X-Forwarded-Origin'] = originUrl;
         (config.headers as any).Referer = originUrl;
-        // Note: X-Forwarded-For should be client IP, but we're using origin for Better Auth compatibility
         
         // Add timezone header
         try {
