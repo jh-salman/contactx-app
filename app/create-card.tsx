@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { convertImageToBase64 } from '@/utils/imageUtils'
 import { uploadImageToCloudinary } from '@/services/imageUploadService'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const CreateCard = () => {
   const router = useRouter()
@@ -100,6 +101,23 @@ const CreateCard = () => {
       }
 
       const response = await apiService.createCard(cardData)
+      
+      // Get the created card data from response
+      const createdCard = response.data || response
+      
+      // Store created card temporarily to show it even if fetch fails
+      if (createdCard) {
+        try {
+          await AsyncStorage.setItem('lastCreatedCard', JSON.stringify(createdCard))
+          // Clear after 5 seconds (enough time for refresh)
+          setTimeout(async () => {
+            await AsyncStorage.removeItem('lastCreatedCard')
+          }, 5000)
+        } catch (e) {
+          console.warn('Failed to store created card:', e)
+        }
+      }
+      
       Alert.alert('Success', 'Card created successfully!', [
         { 
           text: 'OK', 

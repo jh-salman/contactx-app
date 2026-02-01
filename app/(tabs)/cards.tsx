@@ -9,6 +9,8 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const cards = () => {
   const [cards, setCards] = useState<any[]>([])
@@ -36,7 +38,26 @@ const cards = () => {
       const response = await apiService.getAllCards()
       
       // Handle different response structures
-      const cardsData = response.data || response.cards || response || []
+      let cardsData = response.data || response.cards || response || []
+      
+      // Check if we have a recently created card that should be added
+      try {
+        const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
+        if (lastCreatedCardJson) {
+          const lastCreatedCard = JSON.parse(lastCreatedCardJson)
+          // Check if card is not already in the list
+          const cardExists = Array.isArray(cardsData) && cardsData.some(
+            (c: any) => c.id === lastCreatedCard.id || c._id === lastCreatedCard.id
+          )
+          if (!cardExists && lastCreatedCard) {
+            // Add the created card to the beginning of the list
+            cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
+            console.log('✅ Added recently created card to list')
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to check for created card:', e)
+      }
       
       // If response has success: true and data is empty array, treat as empty state
       if (response.success === true && Array.isArray(cardsData)) {
@@ -108,7 +129,11 @@ const cards = () => {
     React.useCallback(() => {
       // Only refresh if we've already loaded once
       if (hasLoadedRef.current) {
-        fetchCards()
+        // Add a small delay to ensure navigation animation completes
+        const timeoutId = setTimeout(() => {
+          fetchCards()
+        }, 300)
+        return () => clearTimeout(timeoutId)
       }
       // No cleanup needed - we want it to refresh every time screen focuses
     }, [fetchCards])
