@@ -105,14 +105,18 @@ const CreateCard = () => {
       // Get the created card data from response
       // API returns: { success: true, message: "...", data: cardObject }
       // apiService.createCard returns response.data, so we get: { success: true, message: "...", data: cardObject }
-      // So we need response.data to get the response object, then response.data.data to get the card
+      // So we need response.data to get the card object (response.data is the card itself)
       const createdCard = response.data || (response as any).data || response
       
       console.log('✅ Card created successfully')
       console.log('📦 Full response:', JSON.stringify(response, null, 2))
+      console.log('📦 Response type:', typeof response)
       console.log('📦 Response.data:', response.data)
+      console.log('📦 Response.data type:', typeof response.data)
       console.log('📦 Created card:', createdCard)
+      console.log('📦 Created card type:', typeof createdCard)
       console.log('📦 Card ID:', createdCard?.id || createdCard?._id)
+      console.log('📦 Card keys:', createdCard ? Object.keys(createdCard) : 'no card')
       
       // Verify card has required fields
       if (!createdCard || (!createdCard.id && !createdCard._id)) {
