@@ -39,18 +39,23 @@ const cards = () => {
       let lastCreatedCard = null
       try {
         const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
+        console.log('🔍 AsyncStorage check:', {
+          hasItem: !!lastCreatedCardJson,
+          itemLength: lastCreatedCardJson?.length || 0
+        })
         if (lastCreatedCardJson) {
           lastCreatedCard = JSON.parse(lastCreatedCardJson)
           console.log('🔍 Found created card in storage:', {
             id: lastCreatedCard?.id || lastCreatedCard?._id,
             hasId: !!(lastCreatedCard?.id || lastCreatedCard?._id),
+            cardKeys: Object.keys(lastCreatedCard || {}),
             card: lastCreatedCard
           })
         } else {
           console.log('ℹ️ No created card in AsyncStorage')
         }
       } catch (e) {
-        console.warn('Failed to read created card from storage:', e)
+        console.error('❌ Failed to read created card from storage:', e)
       }
       
       const response = await apiService.getAllCards()

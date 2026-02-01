@@ -124,8 +124,22 @@ const CreateCard = () => {
       // Store created card temporarily to show it even if fetch fails
       if (createdCard && (createdCard.id || createdCard._id)) {
         try {
-          await AsyncStorage.setItem('lastCreatedCard', JSON.stringify(createdCard))
-          console.log('💾 Stored created card in AsyncStorage')
+          const cardJson = JSON.stringify(createdCard)
+          await AsyncStorage.setItem('lastCreatedCard', cardJson)
+          console.log('💾 Stored created card in AsyncStorage:', {
+            id: createdCard.id || createdCard._id,
+            jsonLength: cardJson.length,
+            cardKeys: Object.keys(createdCard)
+          })
+          
+          // Verify it was stored
+          const verify = await AsyncStorage.getItem('lastCreatedCard')
+          if (verify) {
+            console.log('✅ Verified: Card stored successfully in AsyncStorage')
+          } else {
+            console.error('❌ Failed to verify card storage')
+          }
+          
           // Clear after 60 seconds (enough time for multiple refreshes)
           // Will also be cleared earlier if card is found in the list
           setTimeout(async () => {
@@ -137,10 +151,14 @@ const CreateCard = () => {
             }
           }, 60000) // Increased to 60 seconds
         } catch (e) {
-          console.warn('Failed to store created card:', e)
+          console.error('❌ Failed to store created card:', e)
         }
       } else {
-        console.warn('⚠️ Created card missing ID:', createdCard)
+        console.error('❌ Created card missing ID:', {
+          hasCard: !!createdCard,
+          hasId: !!(createdCard?.id || createdCard?._id),
+          card: createdCard
+        })
       }
       
       Alert.alert('Success', 'Card created successfully!', [
