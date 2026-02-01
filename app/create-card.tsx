@@ -118,11 +118,16 @@ const CreateCard = () => {
         try {
           await AsyncStorage.setItem('lastCreatedCard', JSON.stringify(createdCard))
           console.log('💾 Stored created card in AsyncStorage')
-          // Clear after 10 seconds (enough time for refresh)
+          // Clear after 60 seconds (enough time for multiple refreshes)
+          // Will also be cleared earlier if card is found in the list
           setTimeout(async () => {
-            await AsyncStorage.removeItem('lastCreatedCard')
-            console.log('🗑️ Cleared created card from AsyncStorage')
-          }, 10000)
+            try {
+              await AsyncStorage.removeItem('lastCreatedCard')
+              console.log('🗑️ Cleared created card from AsyncStorage (timeout)')
+            } catch (e) {
+              console.warn('Failed to clear created card:', e)
+            }
+          }, 60000) // Increased to 60 seconds
         } catch (e) {
           console.warn('Failed to store created card:', e)
         }

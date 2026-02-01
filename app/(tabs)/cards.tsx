@@ -67,7 +67,13 @@ const cards = () => {
           cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
           console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
         } else {
-          console.log('ℹ️ Created card already exists in list')
+          // Card exists in the list, we can clear AsyncStorage now
+          console.log('ℹ️ Created card already exists in list, clearing AsyncStorage')
+          try {
+            await AsyncStorage.removeItem('lastCreatedCard')
+          } catch (e) {
+            console.warn('Failed to clear created card from storage:', e)
+          }
         }
       }
       
