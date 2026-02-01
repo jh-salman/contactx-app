@@ -41,16 +41,33 @@ const cards = () => {
         const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
         if (lastCreatedCardJson) {
           lastCreatedCard = JSON.parse(lastCreatedCardJson)
-          console.log('🔍 Found created card in storage:', lastCreatedCard?.id || lastCreatedCard?._id)
+          console.log('🔍 Found created card in storage:', {
+            id: lastCreatedCard?.id || lastCreatedCard?._id,
+            hasId: !!(lastCreatedCard?.id || lastCreatedCard?._id),
+            card: lastCreatedCard
+          })
+        } else {
+          console.log('ℹ️ No created card in AsyncStorage')
         }
       } catch (e) {
         console.warn('Failed to read created card from storage:', e)
       }
       
       const response = await apiService.getAllCards()
+      console.log('📡 API Response:', {
+        hasData: !!response.data,
+        hasCards: !!response.cards,
+        success: response.success,
+        responseKeys: Object.keys(response)
+      })
       
       // Handle different response structures
       let cardsData = response.data || response.cards || response || []
+      console.log('📋 Cards data:', {
+        isArray: Array.isArray(cardsData),
+        length: Array.isArray(cardsData) ? cardsData.length : 0,
+        cardsData
+      })
       
       // If we have a created card, add it to the list if not already present
       if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
@@ -80,6 +97,7 @@ const cards = () => {
       // Always show cards if we have any (either from API or from AsyncStorage)
       // If cardsData is empty but we have lastCreatedCard, show it
       if (Array.isArray(cardsData) && cardsData.length > 0) {
+        console.log('✅ Setting cards from API:', cardsData.length)
         setCards(cardsData)
         setError(null)
         // If we successfully got cards and list is not empty, clear AsyncStorage
@@ -96,13 +114,14 @@ const cards = () => {
       
       // If no cards from API but we have created card, show it
       if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
-        console.log('📋 No cards from API, showing created card from storage')
+        console.log('📋 No cards from API, showing created card from storage. Card:', lastCreatedCard)
         setCards([lastCreatedCard])
         setError(null)
         return
       }
       
       // No cards at all
+      console.log('⚠️ No cards found - neither from API nor AsyncStorage')
       setCards([])
       setError(null)
     } catch (err: any) {
