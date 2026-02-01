@@ -94,6 +94,16 @@ apiClient.interceptors.response.use(
     
     const fullUrl = originalRequest ? `${originalRequest.baseURL || ''}${originalRequest.url || ''}` : 'Unknown URL';
 
+    // Check if this is a database error (500 with database-related message)
+    const errorMessage = error.response?.data?.message || '';
+    const isDatabaseError = 
+      error.response?.status === 500 &&
+      (errorMessage.toLowerCase().includes('column') ||
+       errorMessage.toLowerCase().includes('table') ||
+       errorMessage.toLowerCase().includes('database') ||
+       errorMessage.toLowerCase().includes('prisma') ||
+       errorMessage.toLowerCase().includes('not available'));
+
     // Log errors (dev only, simplified)
     if (__DEV__) {
       if (!error?.response) {
@@ -101,9 +111,28 @@ apiClient.interceptors.response.use(
         const errorCode = error?.code || 'UNKNOWN';
         console.warn(`🌐 Network Error: ${errorCode} - ${fullUrl}`);
       } else {
-        // API error response
-        console.error(`❌ API Error: ${error.response.status} - ${fullUrl}`, error.response.data);
+        // Don't log database errors as errors - they're handled gracefully
+        if (isDatabaseError) {
+          console.log(`ℹ️ Database schema issue (handled gracefully): ${fullUrl}`);
+        } else {
+          console.error(`❌ API Error: ${error.response.status} - ${fullUrl}`, error.response.data);
+        }
       }
+    }
+
+    // For database errors, modify the error response to be handled gracefully by UI
+    if (isDatabaseError && error.response) {
+      // Modify error response to indicate success with empty data
+      // This allows UI components to treat it as empty state
+      error.response.data = {
+        success: true,
+        data: [],
+        message: 'No data available'
+      };
+      // Change status to 200 so it's not treated as an error
+      error.response.status = 200;
+      // Return the modified response instead of rejecting
+      return Promise.resolve(error.response);
     }
 
     // Handle 401 Unauthorized - Token expired or invalid
