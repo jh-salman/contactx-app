@@ -83,6 +83,20 @@ const cards = () => {
           errorMessage.toLowerCase().includes('table') ||
           errorMessage.toLowerCase().includes('database') ||
           errorMessage.toLowerCase().includes('prisma')) {
+        // Check if we have a recently created card to show
+        try {
+          const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
+          if (lastCreatedCardJson) {
+            const lastCreatedCard = JSON.parse(lastCreatedCardJson)
+            // Show the created card even if fetch failed
+            setCards([lastCreatedCard])
+            setError(null)
+            console.log('✅ Showing recently created card despite database error')
+            return
+          }
+        } catch (e) {
+          console.warn('Failed to check for created card:', e)
+        }
         // Server already handled the error gracefully, return empty array
         setCards([])
         setError(null)
