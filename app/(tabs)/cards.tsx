@@ -41,6 +41,7 @@ const cards = () => {
       let cardsData = response.data || response.cards || response || []
       
       // Check if we have a recently created card that should be added
+      // This works even if database fetch returned empty array due to errors
       try {
         const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
         if (lastCreatedCardJson) {
@@ -48,7 +49,7 @@ const cards = () => {
           console.log('🔍 Found created card in storage:', lastCreatedCard?.id || lastCreatedCard?._id)
           
           // Check if card is not already in the list
-          const cardExists = Array.isArray(cardsData) && cardsData.some(
+          const cardExists = Array.isArray(cardsData) && cardsData.length > 0 && cardsData.some(
             (c: any) => (c.id && lastCreatedCard.id && c.id === lastCreatedCard.id) || 
                        (c._id && lastCreatedCard._id && c._id === lastCreatedCard._id) ||
                        (c.id && lastCreatedCard._id && c.id === lastCreatedCard._id) ||
@@ -61,13 +62,18 @@ const cards = () => {
             console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
           } else if (cardExists) {
             console.log('ℹ️ Created card already exists in list')
+          } else if (!lastCreatedCard.id && !lastCreatedCard._id) {
+            console.warn('⚠️ Created card missing ID:', lastCreatedCard)
           }
+        } else {
+          console.log('ℹ️ No created card found in AsyncStorage')
         }
       } catch (e) {
         console.warn('Failed to check for created card:', e)
       }
       
       // If response has success: true and data is empty array, treat as empty state
+      // But still show created card if we have one
       if (response.success === true && Array.isArray(cardsData)) {
         setCards(cardsData)
         setError(null)
