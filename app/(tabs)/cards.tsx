@@ -10,7 +10,6 @@ import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity,
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const cards = () => {
   const [cards, setCards] = useState<any[]>([])
