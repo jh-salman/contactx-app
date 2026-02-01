@@ -35,41 +35,41 @@ const cards = () => {
     try {
       setLoading(true)
       setError(null)
+      
+      // First check if we have a recently created card
+      let lastCreatedCard = null
+      try {
+        const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
+        if (lastCreatedCardJson) {
+          lastCreatedCard = JSON.parse(lastCreatedCardJson)
+          console.log('🔍 Found created card in storage:', lastCreatedCard?.id || lastCreatedCard?._id)
+        }
+      } catch (e) {
+        console.warn('Failed to read created card from storage:', e)
+      }
+      
       const response = await apiService.getAllCards()
       
       // Handle different response structures
       let cardsData = response.data || response.cards || response || []
       
-      // Check if we have a recently created card that should be added
-      // This works even if database fetch returned empty array due to errors
-      try {
-        const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
-        if (lastCreatedCardJson) {
-          const lastCreatedCard = JSON.parse(lastCreatedCardJson)
-          console.log('🔍 Found created card in storage:', lastCreatedCard?.id || lastCreatedCard?._id)
-          
-          // Check if card is not already in the list
-          const cardExists = Array.isArray(cardsData) && cardsData.length > 0 && cardsData.some(
-            (c: any) => (c.id && lastCreatedCard.id && c.id === lastCreatedCard.id) || 
-                       (c._id && lastCreatedCard._id && c._id === lastCreatedCard._id) ||
-                       (c.id && lastCreatedCard._id && c.id === lastCreatedCard._id) ||
-                       (c._id && lastCreatedCard.id && c._id === lastCreatedCard.id)
-          )
-          
-          if (!cardExists && lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
-            // Add the created card to the beginning of the list
-            cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
-            console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
-          } else if (cardExists) {
-            console.log('ℹ️ Created card already exists in list')
-          } else if (!lastCreatedCard.id && !lastCreatedCard._id) {
-            console.warn('⚠️ Created card missing ID:', lastCreatedCard)
-          }
+      // If we have a created card, add it to the list if not already present
+      if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
+        // Check if card is not already in the list
+        const cardExists = Array.isArray(cardsData) && cardsData.length > 0 && cardsData.some(
+          (c: any) => (c.id && lastCreatedCard.id && c.id === lastCreatedCard.id) || 
+                     (c._id && lastCreatedCard._id && c._id === lastCreatedCard._id) ||
+                     (c.id && lastCreatedCard._id && c.id === lastCreatedCard._id) ||
+                     (c._id && lastCreatedCard.id && c._id === lastCreatedCard.id)
+        )
+        
+        if (!cardExists) {
+          // Add the created card to the beginning of the list
+          cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
+          console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
         } else {
-          console.log('ℹ️ No created card found in AsyncStorage')
+          console.log('ℹ️ Created card already exists in list')
         }
-      } catch (e) {
-        console.warn('Failed to check for created card:', e)
       }
       
       // If response has success: true and data is empty array, treat as empty state
