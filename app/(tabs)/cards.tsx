@@ -88,9 +88,10 @@ const cards = () => {
           // Add the created card to the beginning of the list
           cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
           console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
+          // Don't clear AsyncStorage yet - keep it for future refreshes
         } else {
-          // Card exists in the list, we can clear AsyncStorage now
-          console.log('ℹ️ Created card already exists in list, clearing AsyncStorage')
+          // Card exists in the API response - safe to clear AsyncStorage
+          console.log('ℹ️ Created card found in API response, clearing AsyncStorage')
           try {
             await AsyncStorage.removeItem('lastCreatedCard')
           } catch (e) {
@@ -105,15 +106,8 @@ const cards = () => {
         console.log('✅ Setting cards (from API + AsyncStorage):', cardsData.length)
         setCards(cardsData)
         setError(null)
-        // Clear AsyncStorage after successful display
-        if (lastCreatedCard) {
-          try {
-            await AsyncStorage.removeItem('lastCreatedCard')
-            console.log('🗑️ Cleared created card from AsyncStorage (displayed successfully)')
-          } catch (e) {
-            console.warn('Failed to clear created card:', e)
-          }
-        }
+        // Only clear AsyncStorage if card was found in API response (not just added from storage)
+        // This ensures card stays in storage for future refreshes if API still fails
         return
       }
       
