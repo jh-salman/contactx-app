@@ -45,14 +45,22 @@ const cards = () => {
         const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
         if (lastCreatedCardJson) {
           const lastCreatedCard = JSON.parse(lastCreatedCardJson)
+          console.log('🔍 Found created card in storage:', lastCreatedCard?.id || lastCreatedCard?._id)
+          
           // Check if card is not already in the list
           const cardExists = Array.isArray(cardsData) && cardsData.some(
-            (c: any) => c.id === lastCreatedCard.id || c._id === lastCreatedCard.id
+            (c: any) => (c.id && lastCreatedCard.id && c.id === lastCreatedCard.id) || 
+                       (c._id && lastCreatedCard._id && c._id === lastCreatedCard._id) ||
+                       (c.id && lastCreatedCard._id && c.id === lastCreatedCard._id) ||
+                       (c._id && lastCreatedCard.id && c._id === lastCreatedCard.id)
           )
-          if (!cardExists && lastCreatedCard) {
+          
+          if (!cardExists && lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
             // Add the created card to the beginning of the list
             cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
-            console.log('✅ Added recently created card to list')
+            console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
+          } else if (cardExists) {
+            console.log('ℹ️ Created card already exists in list')
           }
         }
       } catch (e) {
@@ -88,11 +96,17 @@ const cards = () => {
           const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
           if (lastCreatedCardJson) {
             const lastCreatedCard = JSON.parse(lastCreatedCardJson)
-            // Show the created card even if fetch failed
-            setCards([lastCreatedCard])
-            setError(null)
-            console.log('✅ Showing recently created card despite database error')
-            return
+            if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
+              // Show the created card even if fetch failed
+              setCards([lastCreatedCard])
+              setError(null)
+              console.log('✅ Showing recently created card despite database error. Card ID:', lastCreatedCard.id || lastCreatedCard._id)
+              return
+            } else {
+              console.warn('⚠️ Created card in storage missing ID')
+            }
+          } else {
+            console.log('ℹ️ No created card found in storage')
           }
         } catch (e) {
           console.warn('Failed to check for created card:', e)

@@ -103,19 +103,27 @@ const CreateCard = () => {
       const response = await apiService.createCard(cardData)
       
       // Get the created card data from response
-      const createdCard = response.data || response
+      // API returns: { success: true, message: "...", data: cardObject }
+      const createdCard = response.data || (response as any).data || response
+      
+      console.log('✅ Card created successfully:', createdCard?.id || createdCard?._id)
+      console.log('📦 Full response:', JSON.stringify(response, null, 2))
       
       // Store created card temporarily to show it even if fetch fails
-      if (createdCard) {
+      if (createdCard && (createdCard.id || createdCard._id)) {
         try {
           await AsyncStorage.setItem('lastCreatedCard', JSON.stringify(createdCard))
-          // Clear after 5 seconds (enough time for refresh)
+          console.log('💾 Stored created card in AsyncStorage')
+          // Clear after 10 seconds (enough time for refresh)
           setTimeout(async () => {
             await AsyncStorage.removeItem('lastCreatedCard')
-          }, 5000)
+            console.log('🗑️ Cleared created card from AsyncStorage')
+          }, 10000)
         } catch (e) {
           console.warn('Failed to store created card:', e)
         }
+      } else {
+        console.warn('⚠️ Created card missing ID:', createdCard)
       }
       
       Alert.alert('Success', 'Card created successfully!', [
