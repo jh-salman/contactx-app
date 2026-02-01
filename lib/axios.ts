@@ -94,15 +94,17 @@ apiClient.interceptors.response.use(
     
     const fullUrl = originalRequest ? `${originalRequest.baseURL || ''}${originalRequest.url || ''}` : 'Unknown URL';
 
-    // Check if this is a database error (500 with database-related message)
+    // Check if this is a database error (400/500 with database-related message)
     const errorMessage = error.response?.data?.message || '';
     const isDatabaseError = 
-      error.response?.status === 500 &&
+      (error.response?.status === 400 || error.response?.status === 500) &&
       (errorMessage.toLowerCase().includes('column') ||
        errorMessage.toLowerCase().includes('table') ||
+       errorMessage.toLowerCase().includes('does not exist') ||
        errorMessage.toLowerCase().includes('database') ||
        errorMessage.toLowerCase().includes('prisma') ||
-       errorMessage.toLowerCase().includes('not available'));
+       errorMessage.toLowerCase().includes('not available') ||
+       errorMessage.toLowerCase().includes('invocation'));
 
     // Log errors (dev only, simplified)
     if (__DEV__) {
