@@ -21,14 +21,18 @@ const CustomSplashScreen = ({ onFinish }: SplashScreenProps) => {
   useEffect(() => {
     // Show splash screen for 2 seconds, then hide
     const timer = setTimeout(async () => {
-      if (fontsLoaded) {
+      try {
         await SplashScreen.hideAsync()
+        onFinish()
+      } catch (error) {
+        console.warn('Error hiding splash screen:', error)
+        // Still call onFinish even if hideAsync fails
         onFinish()
       }
     }, 2000) // Show splash for 2 seconds
 
     return () => clearTimeout(timer)
-  }, [fontsLoaded, onFinish])
+  }, [onFinish]) // Remove fontsLoaded dependency - always finish after 2 seconds
 
   const styles = StyleSheet.create({
     container: {
