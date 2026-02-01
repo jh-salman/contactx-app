@@ -82,10 +82,29 @@ const cards = () => {
       if (response.success === true && Array.isArray(cardsData)) {
         setCards(cardsData)
         setError(null)
+        // If we successfully got cards and list is not empty, clear AsyncStorage
+        if (cardsData.length > 0 && lastCreatedCard) {
+          try {
+            await AsyncStorage.removeItem('lastCreatedCard')
+            console.log('🗑️ Cleared created card from AsyncStorage (successful fetch)')
+          } catch (e) {
+            console.warn('Failed to clear created card:', e)
+          }
+        }
         return
       }
       
       setCards(Array.isArray(cardsData) ? cardsData : [])
+      
+      // If we successfully got cards and list is not empty, clear AsyncStorage
+      if (cardsData.length > 0 && lastCreatedCard) {
+        try {
+          await AsyncStorage.removeItem('lastCreatedCard')
+          console.log('🗑️ Cleared created card from AsyncStorage (successful fetch)')
+        } catch (e) {
+          console.warn('Failed to clear created card:', e)
+        }
+      }
     } catch (err: any) {
       // Check if server returned success: true with empty data (graceful error handling)
       if (err.response?.data?.success === true && Array.isArray(err.response?.data?.data)) {
