@@ -130,6 +130,12 @@ const cards = () => {
     }
   }, [])
 
+  // Expose refresh function for manual refresh (e.g., after create/update/delete)
+  const refreshCards = useCallback(() => {
+    lastFetchTimeRef.current = 0 // Reset cooldown
+    fetchCards(true) // Force refresh
+  }, [fetchCards])
+
   useEffect(() => {
     if (!hasLoadedRef.current) {
       fetchCards(true) // Force initial fetch
@@ -145,13 +151,7 @@ const cards = () => {
       // Clear the param to prevent repeated refreshes
       router.setParams({ refresh: undefined })
     }
-  }, [params.refresh, router])
-  
-  // Expose refresh function for manual refresh (e.g., after create/update/delete)
-  const refreshCards = useCallback(() => {
-    lastFetchTimeRef.current = 0 // Reset cooldown
-    fetchCards(true) // Force refresh
-  }, [fetchCards])
+  }, [params.refresh, router, refreshCards])
 
   const styles = StyleSheet.create({
     container: {
