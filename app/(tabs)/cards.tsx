@@ -28,9 +28,30 @@ const cards = () => {
   })
 
   const hasLoadedRef = React.useRef(false)
+  const isFetchingRef = React.useRef(false)
+  const lastFetchTimeRef = React.useRef<number>(0)
+  const FETCH_COOLDOWN = 3000 // 3 seconds cooldown between fetches
 
-  const fetchCards = useCallback(async () => {
+  const fetchCards = useCallback(async (force = false) => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current && !force) {
+      console.log('⏸️ Already fetching, skipping...')
+      return
+    }
+
+    // Check cooldown period (unless forced)
+    if (!force) {
+      const now = Date.now()
+      const timeSinceLastFetch = now - lastFetchTimeRef.current
+      if (timeSinceLastFetch < FETCH_COOLDOWN && lastFetchTimeRef.current > 0) {
+        console.log(`⏸️ Cooldown active (${Math.round((FETCH_COOLDOWN - timeSinceLastFetch) / 1000)}s remaining), skipping fetch`)
+        return
+      }
+      lastFetchTimeRef.current = now
+    }
+
     try {
+      isFetchingRef.current = true
       setLoading(true)
       setError(null)
       
@@ -104,31 +125,37 @@ const cards = () => {
       }
     } finally {
       setLoading(false)
+      isFetchingRef.current = false
     }
   }, [])
 
   useEffect(() => {
     if (!hasLoadedRef.current) {
-      fetchCards()
+      fetchCards(true) // Force initial fetch
       hasLoadedRef.current = true
     }
   }, [fetchCards])
 
-  // Refresh cards when screen comes into focus (e.g., returning from create/update/delete)
-  // Only refresh once when screen comes into focus, not repeatedly
+  // Refresh cards when screen comes into focus, but respect cooldown period
+  // This prevents excessive API calls when navigating between screens
   useFocusEffect(
     React.useCallback(() => {
       // Only refresh if we've already loaded once
       if (hasLoadedRef.current) {
         // Add a small delay to ensure navigation animation completes
         const timeoutId = setTimeout(() => {
-          fetchCards()
+          fetchCards(false) // Don't force - respect cooldown
         }, 300)
         return () => clearTimeout(timeoutId)
       }
-      // No cleanup needed - we want it to refresh every time screen focuses
     }, [fetchCards])
   )
+
+  // Expose refresh function for manual refresh (e.g., after create/update/delete)
+  const refreshCards = useCallback(() => {
+    lastFetchTimeRef.current = 0 // Reset cooldown
+    fetchCards(true) // Force refresh
+  }, [fetchCards])
 
   const styles = StyleSheet.create({
     container: {
@@ -299,7 +326,7 @@ const cards = () => {
                 return <CreateCardItem index={index} scrollX={scrollX} />
               }
               // Otherwise render normal CardItem
-              return <CardItem item={item} index={index} scrollX={scrollX} onRefresh={fetchCards} />
+              return <CardItem item={item} index={index} scrollX={scrollX} onRefresh={refreshCards} />
             }}
             keyExtractor={(item, index) => {
               if (item.isCreateCard) {
