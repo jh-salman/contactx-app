@@ -108,8 +108,11 @@ const CreateCard = () => {
         { 
           text: 'OK', 
           onPress: () => {
-            // Navigate back - cards page will auto-refresh via useFocusEffect and fetch from API
-            router.back()
+            // Navigate back with refresh param to trigger cards reload
+            router.push({
+              pathname: '/(tabs)/cards',
+              params: { refresh: 'true' }
+            })
           }
         }
       ])

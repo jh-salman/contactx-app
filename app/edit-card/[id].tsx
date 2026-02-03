@@ -146,7 +146,11 @@ const EditCard = () => {
         { 
           text: 'OK', 
           onPress: () => {
-            router.back()
+            // Navigate back with refresh param to trigger cards reload
+            router.push({
+              pathname: '/(tabs)/cards',
+              params: { refresh: 'true' }
+            })
           }
         }
       ])

@@ -4,7 +4,7 @@ import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated'
@@ -18,6 +18,7 @@ const cards = () => {
   const fonts = useThemeFonts()
   const { isDark } = useTheme()
   const router = useRouter()
+  const params = useLocalSearchParams()
   const insets = useSafeAreaInsets()
  
   const scrollX = useSharedValue(0);
@@ -136,9 +137,15 @@ const cards = () => {
     }
   }, [fetchCards])
 
-  // REMOVED: useFocusEffect auto-refresh
-  // Cards will only load on initial mount, not on every screen focus
-  // Use refreshCards() manually after create/update/delete actions
+  // Refresh cards when coming back from create/update/delete screens
+  useEffect(() => {
+    // Check if refresh param is set (from create/edit/delete actions)
+    if (params.refresh === 'true') {
+      refreshCards()
+      // Clear the param to prevent repeated refreshes
+      router.setParams({ refresh: undefined })
+    }
+  }, [params.refresh, router])
   
   // Expose refresh function for manual refresh (e.g., after create/update/delete)
   const refreshCards = useCallback(() => {
