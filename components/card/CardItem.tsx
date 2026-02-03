@@ -4,7 +4,7 @@ import { FontAwesome5 } from '@expo/vector-icons'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import * as ImagePicker from 'expo-image-picker'
 import React from 'react'
-import { ActivityIndicator, Alert, Dimensions, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Alert, Dimensions, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, { Extrapolate, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
 // import * as Sharing from 'expo-sharing'
@@ -422,36 +422,28 @@ const CardItem = ({ item, index, scrollX, onRefresh }: { item: any, index: numbe
                     backgroundColor: cardBgColor,
                     shadowColor: isDark ? '#000000' : '#000000'
                 }]} >
-                    <ScrollView 
-                        style={styles.scrollView}
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}
-                    >
+                    <View style={styles.cardContent}>
                         {/* Top Header Section with Brand Color */}
                         <View style={[styles.headerSection, { backgroundColor: originalCardBgColor }]}>
                             {/* Cover Image Background - Full Width and Height */}
-                            {getImageUri('cover') && (
-                                <TouchableOpacity 
-                                    style={styles.coverContainer}
-                                    onPress={showImageUploadOptions}
-                                    activeOpacity={0.8}
-                                >
+                            {getImageUri('cover') ? (
+                                <View style={styles.coverContainer}>
                                     <Image 
                                         source={{ uri: getImageUri('cover') || '' }} 
                                         style={styles.coverImage}
                                         resizeMode="cover"
                                         onError={(error) => {
                                             console.error('❌ Cover image load error:', error.nativeEvent.error)
-                                            console.error('Image URI:', getImageUri('cover'))
                                         }}
                                         onLoad={() => {
-                                            console.log('✅ Cover image loaded successfully:', getImageUri('cover'))
+                                            console.log('✅ Cover image loaded successfully')
                                         }}
                                     />
                                     {/* Overlay for better content visibility */}
                                     <View style={styles.coverOverlay} />
-                                </TouchableOpacity>
-                            )}
+                                </View>
+                            ) : null}
+                            
                             <TouchableOpacity 
                                 style={styles.imageUploadButton}
                                 onPress={showImageUploadOptions}
@@ -464,33 +456,28 @@ const CardItem = ({ item, index, scrollX, onRefresh }: { item: any, index: numbe
                                     <MaterialCommunityIcons name="camera-plus" size={20} color={colors.buttonPrimaryText} />
                                 )}
                             </TouchableOpacity>
+                            
                             <View style={styles.headerContent}>
-                                {/* Logo or X Logo - Always show logo or X */}
-                                {getImageUri('logo') ? (
-                                    <TouchableOpacity 
-                                        style={styles.logoContainer}
-                                        onPress={showImageUploadOptions}
-                                        activeOpacity={0.8}
-                                    >
+                                {/* Logo - Show default SalonX logo if no logo */}
+                                <TouchableOpacity 
+                                    style={styles.logoContainer}
+                                    onPress={showImageUploadOptions}
+                                    activeOpacity={0.8}
+                                >
+                                    {getImageUri('logo') ? (
                                         <Image 
                                             source={{ uri: getImageUri('logo') }} 
                                             style={styles.logoImage}
                                             resizeMode="contain"
                                         />
-                                    </TouchableOpacity>
-                                ) : (
-                                    <TouchableOpacity 
-                                        style={styles.logoContainer}
-                                        onPress={showImageUploadOptions}
-                                        activeOpacity={0.8}
-                                    >
-                                        <MaterialCommunityIcons 
-                                            name="close" 
-                                            size={60} 
-                                            color={colors.text} 
+                                    ) : (
+                                        <Image 
+                                            source={require('@/assets/images/salonx-logo.png')}
+                                            style={styles.logoImage}
+                                            resizeMode="contain"
                                         />
-                                    </TouchableOpacity>
-                                )}
+                                    )}
+                                </TouchableOpacity>
                             </View>
                         </View>
 
@@ -632,7 +619,7 @@ const CardItem = ({ item, index, scrollX, onRefresh }: { item: any, index: numbe
                                 })}
                             </View>
                         </View>
-                    </ScrollView>
+                    </View>
 
                     {/* Bottom Fixed Share Button */}
                     <View style={styles.shareButtonContainer}>
@@ -658,343 +645,352 @@ const CardItem = ({ item, index, scrollX, onRefresh }: { item: any, index: numbe
 export default CardItem
 
 const styles = StyleSheet.create({
-    container:{
-        position:"relative"
+    container: {
+      position: "relative",
     },
     cardContainer: {
-        width: width,
-        height: "100%",
-        justifyContent: "flex-start",
-        alignItems: "center",
-        bottom: -100,
-        left: 0,
-        overflow: 'hidden',
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+      width: width,
+      height: "100%",
+      justifyContent: "flex-start",
+      alignItems: "center",
+      bottom: -100,
+      left: 0,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
     },
-    scrollView: {
-        flex: 1,
-        width: '100%',
-    },
-    scrollContent: {
-        paddingBottom: 100, // Space for fixed share button
+    cardContent: {
+      flex: 1,
+      width: "100%",
+      paddingBottom: 100, // Space for fixed share button
     },
     headerSection: {
-        width: '100%',
-        paddingTop: 60,
-        paddingBottom: 40,
-        minHeight: 400, // 2x height for cover image
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
+      width: "100%",
+      paddingTop: 60,
+      paddingBottom: 40,
+      minHeight: 300, // Reduced for better proportion
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+      overflow: "hidden",
     },
     headerContent: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        zIndex: 2,
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+      zIndex: 2,
     },
     imageUploadButton: {
-        position: 'absolute',
-        top: 20,
-        right: 20,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
+      position: "absolute",
+      top: 20,
+      right: 20,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "rgba(0, 0, 0, 0.3)",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 10,
     },
     coverContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 0,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: "100%",
+      height: "100%",
+      zIndex: 0,
     },
     coverImage: {
-        width: '100%',
-        height: '100%',
+      width: "100%",
+      height: "100%",
+      backgroundColor: "transparent",
     },
     coverOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.2)',
-        zIndex: 1,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.15)",
+      zIndex: 1,
     },
     logoContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 15,
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
     },
     logoImage: {
-        width: '100%',
-        height: '100%',
+      width: "100%",
+      height: "100%",
     },
     avatarContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-        borderWidth: 3,
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      justifyContent: "center",
+      alignItems: "center",
+      overflow: "hidden",
+      borderWidth: 3,
     },
     avatarImage: {
-        width: '100%',
-        height: '100%',
+      width: "100%",
+      height: "100%",
     },
     initialsContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      justifyContent: "center",
+      alignItems: "center",
     },
     initialsText: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        letterSpacing: 2,
+      fontSize: 36,
+      fontWeight: "bold",
+      letterSpacing: 2,
     },
     contentSection: {
-        width: '100%',
-        paddingHorizontal: 24,
-        paddingTop: 32,
-        paddingBottom: 20,
+      width: "100%",
+      paddingHorizontal: 24,
+      paddingTop: 32,
+      paddingBottom: 20,
     },
     fullName: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        textAlign: 'center',
-        letterSpacing: 0.5,
+      fontSize: 32,
+      fontWeight: "bold",
+      marginBottom: 8,
+      textAlign: "center",
+      letterSpacing: 0.5,
     },
     designation: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 4,
-        textAlign: 'center',
-        letterSpacing: 0.3,
+      fontSize: 18,
+      fontWeight: "600",
+      marginBottom: 4,
+      textAlign: "center",
+      letterSpacing: 0.3,
     },
     companyName: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 32,
-        textAlign: 'center',
-        opacity: 0.8,
+      fontSize: 16,
+      fontWeight: "500",
+      marginBottom: 32,
+      textAlign: "center",
+      opacity: 0.8,
     },
     contactActionsContainer: {
-        width: '100%',
-        gap: 12,
+      width: "100%",
+      gap: 12,
     },
     contactActionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 0,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-        borderWidth: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 0,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+      borderWidth: 1,
     },
     contactIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 16,
     },
     contactActionContent: {
-        flex: 1,
+      flex: 1,
     },
     contactActionLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+      fontSize: 12,
+      fontWeight: "600",
+      marginBottom: 4,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
     contactActionValue: {
-        fontSize: 16,
-        fontWeight: '500',
+      fontSize: 16,
+      fontWeight: "500",
     },
     shareButtonContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        paddingHorizontal: 24,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-        paddingTop: 16,
-        backgroundColor: 'transparent',
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingHorizontal: 24,
+      paddingBottom: Platform.OS === "ios" ? 34 : 24,
+      paddingTop: 16,
+      backgroundColor: "transparent",
     },
     shareButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 16,
-        gap: 8,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 16,
+      borderRadius: 16,
+      gap: 8,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
     },
     shareButtonText: {
-        fontSize: 18,
-        fontWeight: '600',
-        letterSpacing: 0.5,
+      fontSize: 18,
+      fontWeight: "600",
+      letterSpacing: 0.5,
     },
     socialLinksContainer: {
-        width: '100%',
-        marginTop: 20,
-        alignItems: 'center',
-        paddingHorizontal: 20,
+      width: "100%",
+      marginTop: 20,
+      alignItems: "center",
+      paddingHorizontal: 20,
     },
     socialLinkItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        width: '100%',
-        maxWidth: width * 0.85,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        borderWidth: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+      width: "100%",
+      maxWidth: width * 0.85,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 1,
     },
     socialLinkType: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 4,
-        textTransform: 'capitalize',
-        letterSpacing: 0.5,
+      fontSize: 12,
+      fontWeight: "600",
+      marginBottom: 4,
+      textTransform: "capitalize",
+      letterSpacing: 0.5,
     },
     socialLinkUrl: {
-        fontSize: 13,
-        flex: 1,
-        flexShrink: 1,
+      fontSize: 13,
+      flex: 1,
+      flexShrink: 1,
     },
     socialIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
     },
     socialLinkTextContainer: {
-        flex: 1,
+      flex: 1,
     },
     cardTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        marginBottom: 8,
-        textAlign: 'center',
+      fontSize: 20,
+      fontWeight: "600",
+      marginBottom: 8,
+      textAlign: "center",
     },
     cardEmail: {
-        fontSize: 16,
-        marginBottom: 8,
-        textAlign: 'center',
+      fontSize: 16,
+      marginBottom: 8,
+      textAlign: "center",
     },
     cardPhone: {
-        fontSize: 16,
-        marginBottom: 8,
-        textAlign: 'center',
+      fontSize: 16,
+      marginBottom: 8,
+      textAlign: "center",
     },
     cardCompany: {
-        fontSize: 18,
-        fontWeight: '500',
-        marginTop: 10,
-        marginBottom: 5,
-        textAlign: 'center',
+      fontSize: 18,
+      fontWeight: "500",
+      marginTop: 10,
+      marginBottom: 5,
+      textAlign: "center",
     },
     cardDesignation: {
-        fontSize: 16,
-        marginBottom: 8,
-        textAlign: 'center',
+      fontSize: 16,
+      marginBottom: 8,
+      textAlign: "center",
     },
     cardAddress: {
-        fontSize: 14,
-        marginTop: 10,
-        textAlign: 'center',
+      fontSize: 14,
+      marginTop: 10,
+      textAlign: "center",
     },
     cardWebsite: {
-        fontSize: 14,
-        marginTop: 8,
-        textAlign: 'center',
+      fontSize: 14,
+      marginTop: 8,
+      textAlign: "center",
     },
     cardBio: {
-        fontSize: 14,
-        marginTop: 15,
-        textAlign: 'center',
-        fontStyle: 'italic',
+      fontSize: 14,
+      marginTop: 15,
+      textAlign: "center",
+      fontStyle: "italic",
     },
     qrCodeContainer: {
-        marginTop: 20,
-        padding: 10,
-        borderRadius: 8,
+      marginTop: 20,
+      padding: 10,
+      borderRadius: 8,
     },
     qrCodeLabel: {
-        fontSize: 12,
-        textAlign: 'center',
+      fontSize: 12,
+      textAlign: "center",
     },
     qrCard: {
-        position: "absolute",
-        zIndex: -2,
-        width: "38%",
-        aspectRatio: 1,
-        alignSelf:"center",
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 8,
-        padding: 10,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+      position: "absolute",
+      zIndex: -2,
+      width: "38%",
+      aspectRatio: 1,
+      alignSelf: "center",
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 8,
+      padding: 10,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     qrCodeImage: {
-        width: "100%",
-        height: "100%",
+      width: "100%",
+      height: "100%",
     },
     qrCodePlaceholder: {
-        width: "100%",
-        height: "100%",
-        justifyContent: "center",
-        alignItems: "center",
-        borderRadius: 8,
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 8,
     },
     qrCodePlaceholderText: {
-        fontSize: 24,
-        fontWeight: "bold",
-    }
-})
+      fontSize: 24,
+      fontWeight: "bold",
+    },
+  })
+  
