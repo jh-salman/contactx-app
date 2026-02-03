@@ -9,7 +9,6 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const cards = () => {
   const [cards, setCards] = useState<any[]>([])
@@ -35,29 +34,7 @@ const cards = () => {
       setLoading(true)
       setError(null)
       
-      // First check if we have a recently created card
-      let lastCreatedCard = null
-      try {
-        const lastCreatedCardJson = await AsyncStorage.getItem('lastCreatedCard')
-        console.log('🔍 AsyncStorage check:', {
-          hasItem: !!lastCreatedCardJson,
-          itemLength: lastCreatedCardJson?.length || 0
-        })
-        if (lastCreatedCardJson) {
-          lastCreatedCard = JSON.parse(lastCreatedCardJson)
-          console.log('🔍 Found created card in storage:', {
-            id: lastCreatedCard?.id || lastCreatedCard?._id,
-            hasId: !!(lastCreatedCard?.id || lastCreatedCard?._id),
-            cardKeys: Object.keys(lastCreatedCard || {}),
-            card: lastCreatedCard
-          })
-        } else {
-          console.log('ℹ️ No created card in AsyncStorage')
-        }
-      } catch (e) {
-        console.error('❌ Failed to read created card from storage:', e)
-      }
-      
+      // Fetch cards directly from API - no local storage caching
       const response = await apiService.getAllCards()
       console.log('📡 API Response:', {
         hasData: !!response.data,
@@ -67,54 +44,20 @@ const cards = () => {
       })
       
       // Handle different response structures
-      let cardsData = response.data || response.cards || response || []
-      console.log('📋 Cards data:', {
+      const cardsData = response.data || response.cards || response || []
+      console.log('📋 Cards data from API:', {
         isArray: Array.isArray(cardsData),
-        length: Array.isArray(cardsData) ? cardsData.length : 0,
-        cardsData
+        length: Array.isArray(cardsData) ? cardsData.length : 0
       })
       
-      // If we have a created card, add it to the list if not already present
-      if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
-        // Check if card is not already in the list
-        const cardExists = Array.isArray(cardsData) && cardsData.length > 0 && cardsData.some(
-          (c: any) => (c.id && lastCreatedCard.id && c.id === lastCreatedCard.id) || 
-                     (c._id && lastCreatedCard._id && c._id === lastCreatedCard._id) ||
-                     (c.id && lastCreatedCard._id && c.id === lastCreatedCard._id) ||
-                     (c._id && lastCreatedCard.id && c._id === lastCreatedCard.id)
-        )
-        
-        if (!cardExists) {
-          // Add the created card to the beginning of the list
-          cardsData = [lastCreatedCard, ...(Array.isArray(cardsData) ? cardsData : [])]
-          console.log('✅ Added recently created card to list. Total cards:', cardsData.length)
-          // Don't clear AsyncStorage yet - keep it for future refreshes
-        } else {
-          // Card exists in the API response - safe to clear AsyncStorage
-          console.log('ℹ️ Created card found in API response, clearing AsyncStorage')
-          try {
-            await AsyncStorage.removeItem('lastCreatedCard')
-          } catch (e) {
-            console.warn('Failed to clear created card from storage:', e)
-          }
-        }
-      }
-      
-      // Always show cards if we have any (either from API or from AsyncStorage)
-      // cardsData already includes lastCreatedCard if it was added above
-      if (Array.isArray(cardsData) && cardsData.length > 0) {
-        console.log('✅ Setting cards (from API + AsyncStorage):', cardsData.length)
+      // Set cards from API response
+      if (Array.isArray(cardsData)) {
         setCards(cardsData)
         setError(null)
-        // Only clear AsyncStorage if card was found in API response (not just added from storage)
-        // This ensures card stays in storage for future refreshes if API still fails
-        return
+      } else {
+        setCards([])
+        setError(null)
       }
-      
-      // No cards at all - neither from API nor AsyncStorage
-      console.log('⚠️ No cards found - neither from API nor AsyncStorage')
-      setCards([])
-      setError(null)
     } catch (err: any) {
       // Check if server returned success: true with empty data (graceful error handling)
       if (err.response?.data?.success === true && Array.isArray(err.response?.data?.data)) {
@@ -131,16 +74,6 @@ const cards = () => {
           errorMessage.toLowerCase().includes('table') ||
           errorMessage.toLowerCase().includes('database') ||
           errorMessage.toLowerCase().includes('prisma')) {
-        // Check if we have a recently created card to show (already fetched at the beginning)
-        if (lastCreatedCard && (lastCreatedCard.id || lastCreatedCard._id)) {
-          // Show the created card even if fetch failed
-          setCards([lastCreatedCard])
-          setError(null)
-          console.log('✅ Showing recently created card despite database error. Card ID:', lastCreatedCard.id || lastCreatedCard._id)
-          return
-        } else {
-          console.log('ℹ️ No created card found in storage for error fallback')
-        }
         // Server already handled the error gracefully, return empty array
         setCards([])
         setError(null)

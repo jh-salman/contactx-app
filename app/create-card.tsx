@@ -9,7 +9,6 @@ import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { convertImageToBase64 } from '@/utils/imageUtils'
 import { uploadImageToCloudinary } from '@/services/imageUploadService'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const CreateCard = () => {
   const router = useRouter()
@@ -102,83 +101,14 @@ const CreateCard = () => {
 
       const response = await apiService.createCard(cardData)
       
-      // Get the created card data from response
-      // API returns: { success: true, message: "...", data: cardObject }
-      // apiService.createCard returns response.data, so we get: { success: true, message: "...", data: cardObject }
-      // So we need response.data to get the card object
-      // response.data is the whole response object, response.data.data is the card
-      const createdCard = (response as any).data || response.data || response
-      
-      console.log('🔍 Response structure check:', {
-        responseType: typeof response,
-        hasResponseData: !!(response as any).data,
-        responseDataType: typeof (response as any).data,
-        responseKeys: Object.keys(response || {}),
-        responseDataKeys: (response as any).data ? Object.keys((response as any).data) : []
-      })
-      
       console.log('✅ Card created successfully')
-      console.log('📦 Full response:', JSON.stringify(response, null, 2))
-      console.log('📦 Response type:', typeof response)
-      console.log('📦 Response.data:', response.data)
-      console.log('📦 Response.data type:', typeof response.data)
-      console.log('📦 Created card:', createdCard)
-      console.log('📦 Created card type:', typeof createdCard)
-      console.log('📦 Card ID:', createdCard?.id || createdCard?._id)
-      console.log('📦 Card keys:', createdCard ? Object.keys(createdCard) : 'no card')
-      
-      // Verify card has required fields
-      if (!createdCard || (!createdCard.id && !createdCard._id)) {
-        console.error('❌ Created card missing ID:', createdCard)
-        Alert.alert('Error', 'Card created but failed to get card data')
-        return
-      }
-      
-      // Store created card temporarily to show it even if fetch fails
-      if (createdCard && (createdCard.id || createdCard._id)) {
-        try {
-          const cardJson = JSON.stringify(createdCard)
-          await AsyncStorage.setItem('lastCreatedCard', cardJson)
-          console.log('💾 Stored created card in AsyncStorage:', {
-            id: createdCard.id || createdCard._id,
-            jsonLength: cardJson.length,
-            cardKeys: Object.keys(createdCard)
-          })
-          
-          // Verify it was stored
-          const verify = await AsyncStorage.getItem('lastCreatedCard')
-          if (verify) {
-            console.log('✅ Verified: Card stored successfully in AsyncStorage')
-          } else {
-            console.error('❌ Failed to verify card storage')
-          }
-          
-          // Clear after 60 seconds (enough time for multiple refreshes)
-          // Will also be cleared earlier if card is found in the list
-          setTimeout(async () => {
-            try {
-              await AsyncStorage.removeItem('lastCreatedCard')
-              console.log('🗑️ Cleared created card from AsyncStorage (timeout)')
-            } catch (e) {
-              console.warn('Failed to clear created card:', e)
-            }
-          }, 60000) // Increased to 60 seconds
-        } catch (e) {
-          console.error('❌ Failed to store created card:', e)
-        }
-      } else {
-        console.error('❌ Created card missing ID:', {
-          hasCard: !!createdCard,
-          hasId: !!(createdCard?.id || createdCard?._id),
-          card: createdCard
-        })
-      }
+      console.log('📦 API Response:', response)
       
       Alert.alert('Success', 'Card created successfully!', [
         { 
           text: 'OK', 
           onPress: () => {
-            // Navigate back - cards page will auto-refresh via useFocusEffect
+            // Navigate back - cards page will auto-refresh via useFocusEffect and fetch from API
             router.back()
           }
         }
