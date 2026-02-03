@@ -4,7 +4,7 @@ import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated'
@@ -136,21 +136,10 @@ const cards = () => {
     }
   }, [fetchCards])
 
-  // Refresh cards when screen comes into focus, but respect cooldown period
-  // This prevents excessive API calls when navigating between screens
-  useFocusEffect(
-    React.useCallback(() => {
-      // Only refresh if we've already loaded once
-      if (hasLoadedRef.current) {
-        // Add a small delay to ensure navigation animation completes
-        const timeoutId = setTimeout(() => {
-          fetchCards(false) // Don't force - respect cooldown
-        }, 300)
-        return () => clearTimeout(timeoutId)
-      }
-    }, [fetchCards])
-  )
-
+  // REMOVED: useFocusEffect auto-refresh
+  // Cards will only load on initial mount, not on every screen focus
+  // Use refreshCards() manually after create/update/delete actions
+  
   // Expose refresh function for manual refresh (e.g., after create/update/delete)
   const refreshCards = useCallback(() => {
     lastFetchTimeRef.current = 0 // Reset cooldown
