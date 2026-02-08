@@ -1,14 +1,17 @@
 import CardItem from '@/components/card/CardItem'
 import CreateCardItem from '@/components/card/CreateCardItem'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated'
+import { ActivityIndicator, Alert, Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import Animated, { useAnimatedScrollHandler, useAnimatedReaction, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('screen')
 
 const cards = () => {
   const [cards, setCards] = useState<any[]>([])
@@ -22,11 +25,25 @@ const cards = () => {
   const insets = useSafeAreaInsets()
  
   const scrollX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const [currentCardIndex, setCurrentCardIndex] = React.useState(0)
+  
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
       scrollX.value = e.contentOffset.x;
     }
   })
+
+  // Track current card index from scrollX
+  useAnimatedReaction(
+    () => scrollX.value,
+    (value) => {
+      const index = Math.round(value / SCREEN_WIDTH)
+      if (index !== currentCardIndex) {
+        runOnJS(setCurrentCardIndex)(index)
+      }
+    }
+  )
 
   const hasLoadedRef = React.useRef(false)
   const isFetchingRef = React.useRef(false)
@@ -36,7 +53,7 @@ const cards = () => {
   const fetchCards = useCallback(async (force = false) => {
     // Prevent concurrent fetches
     if (isFetchingRef.current && !force) {
-      console.log('⏸️ Already fetching, skipping...')
+      logger.debug('Already fetching, skipping...')
       return
     }
 
@@ -45,7 +62,7 @@ const cards = () => {
       const now = Date.now()
       const timeSinceLastFetch = now - lastFetchTimeRef.current
       if (timeSinceLastFetch < FETCH_COOLDOWN && lastFetchTimeRef.current > 0) {
-        console.log(`⏸️ Cooldown active (${Math.round((FETCH_COOLDOWN - timeSinceLastFetch) / 1000)}s remaining), skipping fetch`)
+        logger.debug(`Cooldown active (${Math.round((FETCH_COOLDOWN - timeSinceLastFetch) / 1000)}s remaining), skipping fetch`)
         return
       }
       lastFetchTimeRef.current = now
@@ -58,7 +75,7 @@ const cards = () => {
       
       // Fetch cards directly from API - no local storage caching
       const response = await apiService.getAllCards()
-      console.log('📡 API Response:', {
+      logger.debug('API Response', {
         hasData: !!response.data,
         hasCards: !!response.cards,
         success: response.success,
@@ -67,7 +84,7 @@ const cards = () => {
       
       // Handle different response structures
       const cardsData = response.data || response.cards || response || []
-      console.log('📋 Cards data from API:', {
+      logger.debug('Cards data from API', {
         isArray: Array.isArray(cardsData),
         length: Array.isArray(cardsData) ? cardsData.length : 0
       })
@@ -153,6 +170,29 @@ const cards = () => {
     }
   }, [params.refresh, router, refreshCards])
 
+  // Prepare data with "Create New Card" as last item
+  const cardsWithCreate = [...cards, { id: 'create-new-card', isCreateCard: true }]
+
+  // Get current card data
+  const currentCard = cardsWithCreate?.[currentCardIndex]
+  const cardTitle = currentCard?.cardTitle || currentCard?.personalInfo?.firstName || currentCard?.personalInfo?.lastName || 'Cards'
+
+  // Toggle card up/down
+  const toggleCardUpDown = () => {
+    const MAX_UP = -40
+    const MAX_DOWN = 0
+    const isUp = translateY.value < -20
+    translateY.value = withSpring(isUp ? MAX_DOWN : MAX_UP, { damping: 18, stiffness: 170 })
+  }
+
+  // Handle edit card
+  const handleEditCard = () => {
+    if (currentCard && !currentCard.isCreateCard) {
+      const cardId = currentCard.id || currentCard._id
+      router.push(`/edit-card/${cardId}` as any)
+    }
+  }
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -201,7 +241,14 @@ const cards = () => {
     },
     header: {
       position: 'absolute',
+      top: -40,
+      right: 0,
       zIndex: 10,
+      backgroundColor: 'transparent',
+      width: '100%',
+      height: '6%',
+      justifyContent: 'flex-end',
+      alignItems: 'flex-end',
     },
     settingsButton: {
       padding: 12,
@@ -216,12 +263,48 @@ const cards = () => {
       shadowRadius: 4,
       elevation: 3,
     },
+    cardHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      height: 50,
+      backgroundColor: 'transparent',
+    },
+    headerIconButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.input,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    headerTitleContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
   })
 
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { fontFamily: fonts.regular, fontSize: 16 }]}>Loading cards...</Text>
@@ -235,7 +318,7 @@ const cards = () => {
   if (error && cards.length === 0 && !error.toLowerCase().includes('no card found')) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
           <View style={styles.centerContent}>
             <Text style={[styles.errorText, { color: colors.primaryDark, fontFamily: fonts.regular, fontSize: 16 }]}>{error}</Text>
           </View>
@@ -250,13 +333,13 @@ const cards = () => {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <SafeAreaView 
           style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative" }}
-          edges={['top', 'bottom', 'left', 'right']}
+          edges={['top']}
         >
           {/* Settings Button - Positioned with safe area insets */}
           <View style={[
             styles.header,
             {
-              top: insets.top + (Platform.OS === 'ios' ? 8 : 12),
+              top: insets.top + (Platform.OS === 'ios' ? 8 : 12) - (SCREEN_HEIGHT * 0.02),
               right: insets.right + 4,
             }
           ]}>
@@ -286,20 +369,70 @@ const cards = () => {
     )
   }
 
-  // Prepare data with "Create New Card" as last item
-  const cardsWithCreate = [...cards, { id: 'create-new-card', isCreateCard: true }]
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView 
         style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative" }}
-        edges={['top', 'bottom', 'left', 'right']}
+        edges={['top']}
       >
+        {/* Card Header - Left: up/down toggle, Middle: title, Right: edit */}
+        <View style={[
+          styles.cardHeader,
+          {
+            top: insets.top + (Platform.OS === 'ios' ? 8 : 12) - (SCREEN_HEIGHT * 0.02),
+            paddingLeft: insets.left + 16,
+            paddingRight: insets.right + 16,
+          }
+        ]}>
+          {/* Left: Card up/down toggle */}
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={toggleCardUpDown}
+            activeOpacity={0.7}
+          >
+            <Animated.View>
+              {(() => {
+                const isUp = translateY.value < -20
+                return (
+                  <MaterialCommunityIcons 
+                    name={isUp ? "chevron-down" : "chevron-up"} 
+                    size={24} 
+                    color={colors.text} 
+                  />
+                )
+              })()}
+            </Animated.View>
+          </TouchableOpacity>
+
+          {/* Middle: Card title */}
+          <View style={styles.headerTitleContainer}>
+            <Text 
+              style={[styles.headerTitle, { color: colors.text, fontFamily: fonts.medium }]}
+              numberOfLines={1}
+            >
+              {cardTitle}
+            </Text>
+          </View>
+
+          {/* Right: Edit icon */}
+          {currentCard && !currentCard.isCreateCard ? (
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={handleEditCard}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="pencil" size={24} color={colors.text} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerIconButton} />
+          )}
+        </View>
+
         {/* Settings Button - Positioned with safe area insets */}
         <View style={[
           styles.header,
           {
-            top: insets.top + (Platform.OS === 'ios' ? 8 : 12),
+            top: insets.top + (Platform.OS === 'ios' ? 8 : 12) - (SCREEN_HEIGHT * 0.02),
             right: insets.right + 4,
           }
         ]}>
@@ -312,17 +445,16 @@ const cards = () => {
           </TouchableOpacity>
         </View>
         
-        <View style={{ height: "5%" }} />
         <View style={{ justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
           <Animated.FlatList
             data={cardsWithCreate}
             renderItem={({ item, index }) => {
               // If it's the create card item, render CreateCardItem
               if (item.isCreateCard) {
-                return <CreateCardItem index={index} scrollX={scrollX} />
+                return <CreateCardItem index={index} scrollX={scrollX} translateY={translateY} />
               }
               // Otherwise render normal CardItem
-              return <CardItem item={item} index={index} scrollX={scrollX} onRefresh={refreshCards} />
+              return <CardItem item={item} index={index} scrollX={scrollX} translateY={translateY} safeAreaTop={insets.top} />
             }}
             keyExtractor={(item, index) => {
               if (item.isCreateCard) {

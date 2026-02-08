@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useThemeColors, useThemeFonts, useTheme } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { StatusBar } from 'expo-status-bar'
 
 interface Contact {
@@ -68,7 +69,7 @@ const ContactDetails = () => {
               setCardColor(colors.primary)
             }
           } catch (error) {
-            console.error('Error fetching card color:', error)
+            logger.error('Error fetching card color', error)
             // Use primary color if card fetch fails
             setCardColor(colors.primary)
           }
@@ -82,7 +83,7 @@ const ContactDetails = () => {
         ])
       }
     } catch (error: any) {
-      console.error('Error fetching contact:', error)
+      logger.error('Error fetching contact', error)
       Alert.alert('Error', 'Failed to load contact details', [
         { text: 'OK', onPress: () => router.back() }
       ])
@@ -114,7 +115,7 @@ const ContactDetails = () => {
                 }
               ])
             } catch (error: any) {
-              console.error('Error deleting contact:', error)
+              logger.error('Error deleting contact', error)
               Alert.alert('Error', error.response?.data?.message || 'Failed to delete contact')
             } finally {
               setDeleting(false)

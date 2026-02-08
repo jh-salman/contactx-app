@@ -11,22 +11,29 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "latest"
+      
       },
       "ios": {
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://hwy-editorial-updates-talked.trycloudflare.com/api"
+        "EXPO_PUBLIC_API_URL": "https://contact-x-api.vercel.app/api"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "latest",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "ios": {
+        "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://hwy-editorial-updates-talked.trycloudflare.com/api"
+        "EXPO_PUBLIC_API_URL": "https://contact-x-api.vercel.app/api"
       }
     }
   },

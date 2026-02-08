@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useThemeColors, useThemeFonts, useTheme } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { convertImageToBase64 } from '@/utils/imageUtils'
@@ -72,7 +73,7 @@ const EditCard = () => {
         ])
       }
     } catch (error: any) {
-      console.error('Error fetching card:', error)
+      logger.error('Error fetching card', error)
       Alert.alert('Error', 'Failed to load card', [
         { text: 'OK', onPress: () => router.back() }
       ])
@@ -155,7 +156,7 @@ const EditCard = () => {
         }
       ])
     } catch (error: any) {
-      console.error('Error updating card:', error)
+      logger.error('Error updating card', error)
       Alert.alert('Error', error.response?.data?.message || 'Failed to update card')
     } finally {
       setSaving(false)
@@ -537,7 +538,7 @@ const EditCard = () => {
                     style={styles.imagePreview}
                     resizeMode="cover"
                     onError={(error) => {
-                      console.error('Image load error:', error)
+                      logger.error('Image load error', error)
                     }}
                   />
                   <TouchableOpacity
@@ -600,10 +601,10 @@ const EditCard = () => {
                           const isPng = uri.toLowerCase().endsWith('.png') || uri.toLowerCase().includes('.png');
                           const mimeType = isPng ? 'image/png' : 'image/jpeg';
                           base64Image = `data:${mimeType};base64,${asset.base64}`;
-                          console.log('✅ Using base64 from ImagePicker');
+                          logger.debug('Using base64 from ImagePicker');
                         } else {
                           // Fallback to conversion
-                          console.log('⚠️ Base64 not available, converting...');
+                          logger.debug('Base64 not available, converting...');
                           base64Image = await convertImageToBase64(imageUri);
                         }
                         
@@ -622,14 +623,14 @@ const EditCard = () => {
                           Alert.alert('Error', 'Failed to upload image. Please try again.')
                         }
                       } catch (uploadError: any) {
-                        console.error('Error uploading image:', uploadError)
+                        logger.error('Error uploading image', uploadError)
                         Alert.alert('Error', uploadError.response?.data?.message || uploadError.message || 'Failed to upload image. Please try again.')
                       } finally {
                         setSaving(false)
                       }
                     }
                   } catch (error: any) {
-                    console.error('Error picking image:', error)
+                    logger.error('Error picking image', error)
                     Alert.alert('Error', 'Failed to pick image. Please try again.')
                     setSaving(false)
                   }

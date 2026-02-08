@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/AuthContext'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -179,7 +180,7 @@ const contacts = () => {
       setRequests([])
       // Only log in development mode
       if (__DEV__) {
-        console.log('Requests API not available or error:', errorMessage)
+        logger.info('Requests API not available or error', { errorMessage })
       }
     }
   }, [])
@@ -206,7 +207,7 @@ const contacts = () => {
       await fetchRequests()
       await fetchContacts(true)
     } catch (err: any) {
-      console.error('Error approving request:', err)
+      logger.error('Error approving request', err)
       Alert.alert(
         'Error',
         err.response?.data?.message || 'Failed to approve request. Please try again.'
@@ -235,7 +236,7 @@ const contacts = () => {
               Alert.alert('Success', 'Contact request rejected.')
               await fetchRequests()
             } catch (err: any) {
-              console.error('Error rejecting request:', err)
+              logger.error('Error rejecting request', err)
               Alert.alert(
                 'Error',
                 err.response?.data?.message || 'Failed to reject request. Please try again.'
@@ -271,7 +272,7 @@ const contacts = () => {
               await logout()
               router.replace('/auth/login')
             } catch (error) {
-              console.error('Logout error:', error)
+              logger.error('Logout error', error)
               Alert.alert('Error', 'Failed to logout. Please try again.')
             }
           },

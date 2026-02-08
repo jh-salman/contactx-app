@@ -7,7 +7,10 @@ import Animated, { Extrapolate, interpolate, useAnimatedStyle } from 'react-nati
 
 const { width } = Dimensions.get("screen")
 
-const CreateCardItem = ({ index, scrollX }: { index: number, scrollX: any }) => {
+const MAX_UP = -40
+const MAX_DOWN = 0
+
+const CreateCardItem = ({ index, scrollX, translateY }: { index: number, scrollX: any, translateY: any }) => {
   const router = useRouter()
   const colors = useThemeColors()
   const fonts = useThemeFonts()
@@ -19,22 +22,27 @@ const CreateCardItem = ({ index, scrollX }: { index: number, scrollX: any }) => 
   ]
 
   const cardAnimation = useAnimatedStyle(() => {
-    const scale = interpolate(
+    // Horizontal carousel scale (center card bigger)
+    const scaleX = interpolate(
       scrollX.value,
       inputRange,
-      [0.8, 1, 0.8],
+      [0.9, 1, 0.9],
       Extrapolate.CLAMP
     )
+
+    // Vertical gesture scale (shared across all cards)
+    const progress = interpolate(translateY.value, [MAX_DOWN, MAX_UP], [0, 1], Extrapolate.CLAMP)
+    const scaleY = interpolate(progress, [0, 1], [0.92, 1.02], Extrapolate.CLAMP)
 
     const opacity = interpolate(
       scrollX.value,
       inputRange,
-      [0.5, 1, 0.5],
+      [0.6, 1, 0.6],
       Extrapolate.CLAMP
     )
 
     return {
-      transform: [{ scale }],
+      transform: [{ scale: scaleX * scaleY }],
       opacity,
     }
   })

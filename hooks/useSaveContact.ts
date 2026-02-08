@@ -1,4 +1,5 @@
 import { apiService } from '@/services/apiService'
+import { logger } from '@/lib/logger'
 import { useRouter } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import { Alert } from 'react-native'
@@ -29,11 +30,11 @@ export const useSaveContact = ({ cardId, cardData, onSuccess }: UseSaveContactPr
       setIsSaved(saved)
       
       if (saved) {
-        console.log('✅ Contact already saved for cardId:', cardId)
+        logger.info('Contact already saved', { cardId })
       }
     } catch (error: any) {
       // Gracefully handle error - don't block modal if contacts check fails
-      console.error('Error checking saved contacts:', error)
+      logger.error('Error checking saved contacts', error)
       setIsSaved(false)
     }
   }, [cardId])
@@ -90,7 +91,7 @@ export const useSaveContact = ({ cardId, cardData, onSuccess }: UseSaveContactPr
         )
       }
     } catch (error: any) {
-      console.error('Error saving contact:', error)
+      logger.error('Error saving contact', error)
       Alert.alert(
         'Error',
         error.response?.data?.message || 'Failed to save contact. Please try again.'

@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react'
-import { View, StyleSheet, Image, Text } from 'react-native'
+import { View, StyleSheet, Text } from 'react-native'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
+import { SalonXLogo } from '@/components/SalonXLogo'
 import { useThemeColors, useThemeFonts } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync()
@@ -19,20 +21,26 @@ const CustomSplashScreen = ({ onFinish }: SplashScreenProps) => {
   })
 
   useEffect(() => {
-    // Show splash screen for 2 seconds, then hide
+    // Always show splash screen for minimum 2 seconds when app opens
+    // This ensures splash screen is visible every time app starts
     const timer = setTimeout(async () => {
       try {
         await SplashScreen.hideAsync()
-        onFinish()
+        // Small delay to ensure smooth transition
+        setTimeout(() => {
+          onFinish()
+        }, 100)
       } catch (error) {
-        console.warn('Error hiding splash screen:', error)
+        logger.warn('Error hiding splash screen', error)
         // Still call onFinish even if hideAsync fails
-        onFinish()
+        setTimeout(() => {
+          onFinish()
+        }, 100)
       }
-    }, 2000) // Show splash for 2 seconds
+    }, 2000) // Minimum 2 seconds splash screen
 
     return () => clearTimeout(timer)
-  }, [onFinish]) // Remove fontsLoaded dependency - always finish after 2 seconds
+  }, [onFinish]) // Always show splash screen on mount
 
   const styles = StyleSheet.create({
     container: {
@@ -66,11 +74,7 @@ const CustomSplashScreen = ({ onFinish }: SplashScreenProps) => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Logo */}
       <View style={styles.logoContainer}>
-        <Image
-          source={require('@/assets/images/logo.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <SalonXLogo width={150} height={150} />
       </View>
       
       {/* SalonX Text */}

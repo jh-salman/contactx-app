@@ -1,10 +1,20 @@
 import { API_BASE_URL } from '@/config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { logger } from './logger';
+
+// Interface for error response data
+interface ErrorResponseData {
+  message?: string;
+  error?: string;
+  success?: boolean;
+  data?: any;
+  [key: string]: any;
+}
 
 // Log API configuration on startup (dev only)
 if (__DEV__) {
-  console.log('🔧 API Base URL:', API_BASE_URL);
+  logger.info('API Base URL', { url: API_BASE_URL });
 }
 
 // Get base URL without /api for Origin header
@@ -15,7 +25,7 @@ const getOriginUrl = () => {
   
   // For mobile apps, use the API base URL as origin
   // This matches what Better Auth expects in trustedOrigins
-  return apiUrl;
+    return apiUrl;
 };
 
 // Create axios instance
@@ -59,22 +69,22 @@ apiClient.interceptors.request.use(
             (config.headers as any)['X-Timezone'] = timezone;
           }
         } catch (tzError) {
-          console.warn('⚠️ Timezone error:', tzError);
+          logger.warn('Timezone error', tzError);
         }
       }
 
       // Log request details (dev only)
       if (__DEV__) {
         const fullUrl = `${config.baseURL}${config.url}`;
-        console.log(`📤 ${config.method?.toUpperCase()} ${fullUrl}`);
+        logger.debug(`Request: ${config.method?.toUpperCase()} ${fullUrl}`);
       }
     } catch (error) {
-      console.error('❌ Request interceptor error:', error);
+      logger.error('Request interceptor error', error);
     }
     return config;
   },
   (error: AxiosError) => {
-    console.error('❌ Request setup error:', error);
+    logger.error('Request setup error', error);
     return Promise.reject(error);
   }
 );
@@ -85,7 +95,7 @@ apiClient.interceptors.response.use(
     // Log successful responses (dev only)
     if (__DEV__) {
       const fullUrl = `${response.config.baseURL}${response.config.url}`;
-      console.log(`✅ ${response.config.method?.toUpperCase()} ${fullUrl} - ${response.status}`);
+      logger.debug(`Response: ${response.config.method?.toUpperCase()} ${fullUrl} - ${response.status}`);
     }
     return response;
   },
@@ -94,8 +104,10 @@ apiClient.interceptors.response.use(
     
     const fullUrl = originalRequest ? `${originalRequest.baseURL || ''}${originalRequest.url || ''}` : 'Unknown URL';
 
-    // Check if this is a database error (400/500 with database-related message)
-    const errorMessage = error.response?.data?.message || '';
+    // Type-safe access to error response data
+    const errorData = error.response?.data as ErrorResponseData | undefined;
+    const errorMessage = errorData?.message || errorData?.error || '';
+
     const isDatabaseError = 
       (error.response?.status === 400 || error.response?.status === 500) &&
       (errorMessage.toLowerCase().includes('column') ||
@@ -111,16 +123,24 @@ apiClient.interceptors.response.use(
       if (!error?.response) {
         // Network error
         const errorCode = error?.code || 'UNKNOWN';
-        console.warn(`🌐 Network Error: ${errorCode} - ${fullUrl}`);
+        logger.warn('Network Error', { code: errorCode, url: fullUrl });
       } else {
         // Don't log database errors as errors - they're handled gracefully
         if (isDatabaseError) {
-          console.log(`ℹ️ Database schema issue (handled gracefully): ${fullUrl}`);
+          logger.info('Database schema issue (handled gracefully)', { url: fullUrl });
         } else {
-          console.error(`❌ API Error: ${error.response.status} - ${fullUrl}`, error.response.data);
+          logger.error('API Error', error, { status: error.response.status, url: fullUrl });
         }
       }
     }
+
+    // Production-safe error handling - ensure error is always handled
+    // Add handled flag to prevent app crashes
+    const handledError = {
+      ...error,
+      handled: true,
+      userMessage: errorData?.message || errorData?.error || error.message || 'An error occurred',
+    };
 
     // For database errors, modify the error response to be handled gracefully by UI
     if (isDatabaseError && error.response) {
@@ -140,19 +160,20 @@ apiClient.interceptors.response.use(
     // Handle 401 Unauthorized - Token expired or invalid
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
-      console.warn('🔐 401 Unauthorized - Clearing auth token');
+      logger.warn('401 Unauthorized - Clearing auth token');
       
       try {
         // Clear stored auth data
         await AsyncStorage.removeItem('authToken');
         await AsyncStorage.removeItem('userData');
-        console.log('🗑️ Auth data cleared');
+        logger.info('Auth data cleared');
       } catch (storageError) {
-        console.error('❌ Error clearing auth data:', storageError);
+        logger.error('Error clearing auth data', storageError);
       }
     }
 
-    return Promise.reject(error);
+    // Return handled error instead of raw error
+    return Promise.reject(handledError);
   }
 );
 

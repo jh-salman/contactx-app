@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useThemeColors, useThemeFonts, useTheme } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { StatusBar } from 'expo-status-bar'
 
 const CreateContact = () => {
@@ -57,7 +58,7 @@ const CreateContact = () => {
         ]
       )
     } catch (error: any) {
-      console.error('Error creating contact:', error)
+      logger.error('Error creating contact', error)
       Alert.alert('Error', error.response?.data?.message || 'Failed to create contact')
     } finally {
       setLoading(false)

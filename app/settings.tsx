@@ -1,6 +1,7 @@
 import { ThemeMode } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext';
+import { logger } from '@/lib/logger';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -44,7 +45,7 @@ export default function SettingsScreen() {
               await logout();
               router.replace('/auth/login');
             } catch (error) {
-              console.error('Logout error:', error);
+              logger.error('Logout error', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           },

@@ -1,5 +1,6 @@
 import { DarkColors, Fonts, LightColors, Theme, ThemeMode } from '@/constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '@/lib/logger';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
 
@@ -46,7 +47,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setCustomColors(JSON.parse(savedColors));
       }
     } catch (error) {
-        console.error('Error loading theme:', error);
+        logger.error('Error loading theme', error);
       }
     };
     loadTheme();
@@ -75,7 +76,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch (error) {
-      console.error('Error saving theme:', error);
+      logger.error('Error saving theme', error);
     }
   };
 
@@ -91,7 +92,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       await AsyncStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(merged));
     } catch (error) {
-      console.error('Error saving colors:', error);
+      logger.error('Error saving colors', error);
     }
   };
 

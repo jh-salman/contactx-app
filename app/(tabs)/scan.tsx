@@ -1,6 +1,7 @@
 import CardModal from '@/components/CardModal'
 import { useTabBar } from '@/context/TabBar'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as Location from 'expo-location'
@@ -38,7 +39,7 @@ const scan = () => {
         // Request permission
         const { status } = await Location.requestForegroundPermissionsAsync()
         if (status !== 'granted') {
-          console.log('⚠️ Location permission denied - will use IP-based location')
+          logger.info('Location permission denied - will use IP-based location')
           return null
         }
       }
@@ -61,7 +62,7 @@ const scan = () => {
         city = address?.city || address?.district || undefined
         country = address?.country || undefined
       } catch (geocodeError) {
-        console.log('⚠️ Reverse geocoding failed:', geocodeError)
+        logger.warn('Reverse geocoding failed', geocodeError)
       }
 
       const locData = {
@@ -71,10 +72,10 @@ const scan = () => {
         country,
       }
 
-      console.log('✅ Location obtained:', locData)
+      logger.debug('Location obtained', locData)
       return locData
     } catch (error) {
-      console.error('❌ Error getting location:', error)
+      logger.error('Error getting location', error)
       return null
     }
   }
@@ -100,14 +101,12 @@ const scan = () => {
     
     // Log detailed scan information
     const scanTimestamp = new Date().toISOString()
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('📱 QR CODE SCAN EVENT')
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('⏰ Timestamp:', scanTimestamp)
-    console.log('📊 Scan Type:', type)
-    console.log('📄 Raw Data:', data)
-    console.log('📏 Data Length:', data.length)
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    logger.debug('QR CODE SCAN EVENT', {
+      timestamp: scanTimestamp,
+      scanType: type,
+      rawData: data,
+      dataLength: data.length
+    })
     
     // Process the scanned data
     processScannedData(data)
@@ -125,7 +124,7 @@ const scan = () => {
         const urlMatch = data.match(/\/card\/([^\/\?&#]+)/i) || data.match(/cardId=([^&]+)/i)
         if (urlMatch && urlMatch[1]) {
           cardId = urlMatch[1].trim()
-          console.log('📋 Extracted cardId from URL:', cardId)
+          logger.debug('Extracted cardId from URL', { cardId })
         } else {
           // Regular URL, not a card
           Alert.alert(
@@ -148,7 +147,7 @@ const scan = () => {
           const jsonData = JSON.parse(data)
           cardId = jsonData.cardId || jsonData.id || null
           if (cardId) {
-            console.log('📋 Extracted cardId from JSON:', cardId)
+            logger.debug('Extracted cardId from JSON', { cardId })
           }
         } catch (e) {
           // Not valid JSON
@@ -157,7 +156,7 @@ const scan = () => {
       // Assume it's a direct cardId
       else {
         cardId = data.trim()
-        console.log('📋 Using scanned data as cardId:', cardId)
+        logger.debug('Using scanned data as cardId', { cardId })
       }
 
       // If we have a cardId, get location and show modal
@@ -167,21 +166,13 @@ const scan = () => {
         setLocationData(location)
         
         // Log card ID extraction
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('✅ CARD ID EXTRACTED')
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('🆔 Card ID:', cardId)
-        console.log('📋 Extraction Method:', 
-          data.startsWith('http') ? 'URL Pattern' : 
-          data.startsWith('{') ? 'JSON Parse' : 
-          'Direct Card ID'
-        )
-        if (location) {
-          console.log('📍 Location Data:', location)
-        } else {
-          console.log('⚠️ Location not available - backend will use IP-based detection')
-        }
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        logger.debug('CARD ID EXTRACTED', {
+          cardId,
+          extractionMethod: data.startsWith('http') ? 'URL Pattern' : 
+            data.startsWith('{') ? 'JSON Parse' : 
+            'Direct Card ID',
+          location: location || 'IP-based detection'
+        })
         
         setScannedCardId(cardId)
         setShowModal(true)
@@ -200,7 +191,7 @@ const scan = () => {
         )
       }
     } catch (error) {
-      console.error('Error processing scanned data:', error)
+      logger.error('Error processing scanned data', error)
       Alert.alert('Error', 'Failed to process scanned data')
       resetScanner()
     }
@@ -223,7 +214,7 @@ const scan = () => {
 
   const handleContactSaved = () => {
     // Contact saved successfully, can refresh contacts list if needed
-    console.log('Contact saved successfully')
+    logger.info('Contact saved successfully')
   }
 
   const styles = StyleSheet.create({

@@ -1,4 +1,6 @@
-import { StyleSheet, View, Alert, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native'
+// app/auth/verify-otp.tsx
+
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
@@ -6,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { authService } from '@/services/authService'
 import { useThemeColors, useThemeFonts, useTheme } from '@/context/ThemeContext'
 import { StatusBar } from 'expo-status-bar'
+import { showSuccess, showError, showWarning } from '@/lib/toast'
+import { safeAsync } from '@/lib/errorHandler'
 
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('')
@@ -18,72 +22,200 @@ const VerifyOTP = () => {
   const fonts = useThemeFonts()
   const { isDark } = useTheme()
 
+  // Validate OTP format
+  const validateOTP = (otpValue: string): boolean => {
+    const trimmed = otpValue.trim()
+    if (!trimmed) {
+      showError('OTP Required', 'Please enter the OTP code')
+      return false
+    }
+    
+    // Check if OTP is exactly 6 digits
+    if (trimmed.length < 6) {
+      showError('Invalid OTP', 'OTP must be 6 digits')
+      return false
+    }
+    
+    if (trimmed.length > 6) {
+      showError('Invalid OTP', 'OTP must be exactly 6 digits')
+      return false
+    }
+    
+    // Check if all characters are digits
+    if (!/^\d{6}$/.test(trimmed)) {
+      showError('Invalid OTP', 'OTP must contain only numbers')
+      return false
+    }
+    
+    return true
+  }
+
   const handleVerify = async () => {
-    if (!otp.trim()) {
-      Alert.alert('Error', 'Please enter the OTP')
+    // Validation
+    if (!validateOTP(otp)) {
       return
     }
 
     if (!phone) {
-      Alert.alert('Error', 'Phone number is missing')
+      showError('Phone Missing', 'Phone number is missing. Please try logging in again.')
+      // Navigate back to login if phone is missing
+      router.back()
       return
     }
 
+    // Prevent multiple submissions
+    if (loading) return
+
     setLoading(true)
-    try {
-      // Call your backend API to verify OTP
+
+    // Use safeAsync for production-safe error handling
+    const result = await safeAsync(async () => {
+      // Call backend API to verify OTP
       const response = await authService.verifyOTP(phone, otp)
       
+      // Validate response
+      if (!response) {
+        throw new Error('Invalid response from server')
+      }
+
+      const token = response.token || response.data?.token
+      const user = response.user || response.data?.user
+
+      if (!token) {
+        throw new Error('Authentication token not received')
+      }
+
       // Store auth data in context
       await login({
-        token: response.token || response.data?.token,
-        user: response.user || response.data?.user,
+        token,
+        user,
       })
+
+      return { success: true, token, user }
+    }, 'Failed to verify OTP')
+
+    // Handle result
+    if (result) {
+      showSuccess('Verified!', 'Login successful')
       
-      // Navigate to tabs after successful login
-      router.replace('/(tabs)/cards' as any)
-    } catch (error: any) {
-      let errorMessage = 'Invalid OTP. Please try again.';
-      let errorTitle = 'Error';
-      
-      // Network errors
-      if (!error.response) {
-        errorTitle = 'Connection Error';
-        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-          errorMessage = 'Request timeout. Please check your connection and try again.';
-        } else if (error.code === 'ECONNREFUSED') {
-          errorMessage = 'Cannot connect to server. Please check if backend server is running.';
-        } else if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
-          errorMessage = 'Server not found. Please check your API configuration.';
-        } else if (error.message) {
-          errorMessage = `Network error: ${error.message}`;
+      // Small delay to show success message before navigation
+      setTimeout(() => {
+        try {
+          router.replace('/(tabs)/cards' as any)
+        } catch (navError) {
+          // Safe navigation fallback
+          showError('Navigation Error', 'Please restart the app')
         }
-      } 
-      // API response errors
-      else if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        
-        if (status === 400 || status === 422) {
-          errorTitle = 'Invalid Request';
-          errorMessage = data?.message || data?.error || 'Invalid OTP. Please check and try again.';
-        } else if (status === 404) {
-          errorTitle = 'Not Found';
-          errorMessage = data?.message || 'API endpoint not found.';
-        } else if (status === 403) {
-          errorTitle = 'Access Denied';
-          errorMessage = data?.message || 'Access denied.';
-        } else if (status === 500) {
-          errorTitle = 'Server Error';
-          errorMessage = 'Server error occurred. Please try again later.';
-        } else {
-          errorTitle = `Error ${status}`;
-          errorMessage = data?.message || data?.error || error.response.statusText || 'An error occurred.';
-        }
+      }, 500)
+    } else {
+      // Error already handled by safeAsync, but we can add specific handling here
+      // The error toast is already shown by safeAsync
+    }
+  }
+
+  // Enhanced error handling with specific messages
+  const handleVerifyWithDetailedErrors = async () => {
+    // Validate OTP format first
+    if (!validateOTP(otp)) {
+      return
+    }
+
+    if (!phone) {
+      showError('Phone Missing', 'Phone number is missing. Please try logging in again.')
+      router.back()
+      return
+    }
+
+    if (loading) return
+
+    setLoading(true)
+
+    // Wrap in try-catch to prevent any unhandled promise rejections
+    let response: any = null
+    try {
+      // Call authService and catch any errors immediately
+      try {
+        response = await authService.verifyOTP(phone, otp.trim())
+      } catch (serviceError: any) {
+        // Re-throw to be handled by outer catch block
+        throw serviceError
       }
       
-      Alert.alert(errorTitle, errorMessage)
-    } finally {
+      // Validate response structure
+      if (!response) {
+        showError('Invalid Response', 'Server returned an invalid response. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      const token = response.token || response.data?.token
+      const user = response.user || response.data?.user
+
+      if (!token) {
+        showError('Authentication Failed', 'Token not received. Please try again.')
+        return
+      }
+
+      // Store auth data
+      await login({ token, user })
+
+      showSuccess('Verified!', 'Login successful')
+      
+      // Navigate after success message
+      setTimeout(() => {
+        router.replace('/(tabs)/cards' as any)
+      }, 500)
+
+    } catch (error: any) {
+      // Prevent error from propagating to Expo Go error screen
+      // All errors are handled gracefully with toast messages only
+      
+      // Check if error is already handled by axios interceptor
+      if (error.handled) {
+        // Use user-friendly message from handled error
+        showError('Verification Failed', error.userMessage || 'Failed to verify OTP')
+        setLoading(false)
+        return
+      }
+
+      // Network errors - handle silently with toast only
+      if (!error.response) {
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+          showError('Timeout', 'Request timed out. Please check your connection and try again.')
+        } else if (error.code === 'ECONNREFUSED') {
+          showError('Connection Failed', 'Cannot connect to server. Please check your internet connection.')
+        } else if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
+          showError('Server Not Found', 'Cannot reach server. Please check your API configuration.')
+        } else {
+          showError('Network Error', 'Please check your internet connection.')
+        }
+        setLoading(false)
+        return
+      }
+
+      // API response errors - Only show toast, no console/warn, no error screen
+      const status = error.response?.status
+      const data = error.response?.data as { message?: string; error?: string } | undefined
+      
+      if (status === 400 || status === 422) {
+        const message = data?.message || data?.error || 'Invalid OTP. Please check and try again.'
+        showError('Invalid OTP', message)
+      } else if (status === 401) {
+        showError('Invalid OTP', 'OTP expired or invalid. Please request a new OTP.')
+      } else if (status === 403) {
+        showError('Access Denied', data?.message || 'Access denied. Please try again.')
+      } else if (status === 404) {
+        showError('Not Found', 'API endpoint not found. Please contact support.')
+      } else if (status === 429) {
+        showWarning('Too Many Requests', 'Please wait a moment before trying again.')
+      } else if (status === 500) {
+        showError('Server Error', 'Server error occurred. Please try again later.')
+      } else {
+        const message = data?.message || data?.error || 'An error occurred. Please try again.'
+        showError('Error', message)
+      }
+      
+      // Ensure loading state is reset
       setLoading(false)
     }
   }
@@ -109,12 +241,33 @@ const VerifyOTP = () => {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-        <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32 }]}>Verify OTP</Text>
+        <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32 }]}>
+          Verify OTP
+        </Text>
+        
+        <Text style={[
+          { 
+            color: colors.textSecondary, 
+            fontSize: 14, 
+            marginBottom: 20,
+            textAlign: 'center',
+            fontFamily: fonts.regular 
+          }
+        ]}>
+          Enter the code sent to {phone ? `${phone.slice(0, 3)}****${phone.slice(-2)}` : 'your phone'}
+        </Text>
+
         <TextInput
-          placeholder="Enter OTP"
+          placeholder="Enter 6-digit OTP"
           placeholderTextColor={colors.placeholder}
           value={otp}
-          onChangeText={setOtp}
+          onChangeText={(text) => {
+            // Only allow numbers and limit to 6 digits
+            const numericOnly = text.replace(/[^0-9]/g, '')
+            if (numericOnly.length <= 6) {
+              setOtp(numericOnly)
+            }
+          }}
           style={[
             styles.input,
             {
@@ -126,11 +279,30 @@ const VerifyOTP = () => {
               fontSize: 16,
               color: colors.text,
               fontFamily: fonts.regular,
+              textAlign: 'center',
+              letterSpacing: 8,
             }
           ]}
           keyboardType="number-pad"
+          keyboardAppearance={isDark ? 'dark' : 'light'}
           editable={!loading}
+          maxLength={6}
+          autoFocus
         />
+        
+        {otp.length > 0 && otp.length < 6 && (
+          <Text style={{
+            color: colors.primary,
+            fontSize: 12,
+            marginTop: -15,
+            marginBottom: 10,
+            textAlign: 'center',
+            fontFamily: fonts.regular,
+          }}>
+            {6 - otp.length} more digit{6 - otp.length > 1 ? 's' : ''} needed
+          </Text>
+        )}
+        
         <TouchableOpacity
           style={[
             {
@@ -143,16 +315,47 @@ const VerifyOTP = () => {
               minHeight: 44,
               width: '100%',
               opacity: loading ? 0.6 : 1,
+              marginTop: 10,
             }
           ]}
-          onPress={handleVerify}
+          onPress={handleVerifyWithDetailedErrors}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator size="small" color={colors.buttonPrimaryText} />
           ) : (
-            <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontWeight: '600', fontFamily: fonts.medium }}>Verify OTP</Text>
+            <Text style={{ 
+              color: colors.buttonPrimaryText, 
+              fontSize: 16, 
+              fontWeight: '600', 
+              fontFamily: fonts.medium 
+            }}>
+              Verify OTP
+            </Text>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            {
+              marginTop: 20,
+              paddingVertical: 12,
+              alignItems: 'center',
+            }
+          ]}
+          onPress={() => {
+            // Navigate back to login page
+            router.replace('/auth/login')
+          }}
+          disabled={loading}
+        >
+          <Text style={{ 
+            color: colors.primary, 
+            fontSize: 14, 
+            fontFamily: fonts.regular 
+          }}>
+            Back to Login
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     </View>

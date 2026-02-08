@@ -1,186 +1,394 @@
 import { API_BASE_URL } from '@/config/api'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
+import { SalonXLogo } from '@/components/SalonXLogo'
 import { testConnection } from '@/lib/testConnection'
+import { logger } from '@/lib/logger'
 import { authService } from '@/services/authService'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Image, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import React, { useMemo, useState } from 'react'
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Toast from 'react-native-toast-message'
 
-const login = () => {
+
+function normalizePhone(input: string): string {
+  const trimmed = input.trim().replace(/\s+/g, '')
+  const hasPlus = trimmed.startsWith('+')
+  const digitsOnly = trimmed.replace(/[^\d]/g, '')
+
+  // Bangladesh
+  if (digitsOnly.startsWith('01') && digitsOnly.length === 11) return `+88${digitsOnly}`
+  if (digitsOnly.startsWith('8801') && digitsOnly.length === 13) return `+${digitsOnly}`
+
+  // USA (10 digits)
+  if (!hasPlus && digitsOnly.length === 10) return `+1${digitsOnly}`
+
+  // If user typed + already, keep it
+  if (hasPlus) return `+${digitsOnly}`
+
+  // Fallback (not ideal, but lets backend decide)
+  return digitsOnly
+}
+
+function isValidE164(phone: string) {
+  if (!phone.startsWith('+')) return false
+  const d = phone.slice(1)
+  return d.length >= 10 && d.length <= 15
+}
+
+function maskPhone(phone?: string) {
+  if (!phone) return ''
+  // keep first 3 and last 2 digits (very simple)
+  const p = String(phone)
+  if (p.length <= 6) return p
+  return `${p.slice(0, 3)}****${p.slice(-2)}`
+}
+
+const Login = () => {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
+
   const router = useRouter()
   const { isAuthenticated, user, logout, isLoading: authLoading } = useAuth()
+
   const colors = useThemeColors()
   const fonts = useThemeFonts()
   const { isDark } = useTheme()
 
-  // Redirect to tabs if already authenticated
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      // User is already logged in, but they're on login page
-      // Don't auto-redirect, let them see logout option
-    }
-  }, [isAuthenticated, authLoading])
+  const styles = useMemo(() => createStyles(), [])
+
+  const showSuccess = (title: string, message?: string) => {
+    Toast.show({ type: 'success', text1: title, text2: message })
+  }
+
+  const showError = (title: string, message?: string) => {
+    Toast.show({ type: 'error', text1: title, text2: message })
+  }
+
+  const showInfo = (title: string, message?: string) => {
+    Toast.show({ type: 'info', text1: title, text2: message })
+  }
 
   const handleLogin = async () => {
-    if (!phone.trim()) {
-      Alert.alert('Error', 'Please enter your phone number')
+    if (loading) return
+
+    const normalized = normalizePhone(phone)
+
+    if (!normalized) {
+      showError('Phone required', 'Please enter your phone number')
       return
     }
 
-    const phoneNumber = phone.trim()
+    // Production-safe validation (basic)
+    if (!isValidE164(normalized)) {
+      showError('Invalid phone', 'Use BD (01xxxxxxxxx) or US (10 digits) format')
+      return
+    }
 
     setLoading(true)
     try {
-      const result = await authService.login(phoneNumber);
-      router.push({
+      await authService.login(normalized)
+
+      showSuccess('OTP Sent', 'Check your phone for the code')
+      router.replace({
         pathname: '/auth/verify-otp',
-        params: { phone: phoneNumber },
+        params: { phone: normalized },
       })
-    } catch (error: any) {
-      // Log errors (dev only)
+    } catch (err: unknown) {
+      const error = err as any
+
+      // Dev-only log
       if (__DEV__) {
-        if (!error.response) {
-          console.warn('⚠️ Login network error:', error?.code || error?.message);
-        } else {
-          console.error('❌ Login API error:', error.response.status, error.response.data);
-        }
+        const status = error?.response?.status
+        const data = error?.response?.data
+        logger.warn('Login error', { status, data, code: error?.code, message: error?.message })
       }
-      
-      let errorMessage = 'Failed to send OTP.';
-      let errorTitle = 'Error';
-      
-      // Network errors (no response from server)
-      if (!error.response) {
-        errorTitle = 'Connection Error';
-        
-        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-          errorMessage = 'Request timeout.\n\nThe server is not responding. Please check:\n\n• Backend server is running\n• Device and server on same WiFi network\n• Firewall allows port 3004\n• Try again in a moment';
-        } else if (error.code === 'ECONNREFUSED') {
-          errorMessage = 'Connection refused.\n\nThe server is not accepting connections. Please check if backend server is running on port 3004.';
-        } else if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
-          errorMessage = 'Server not found.\n\nCannot resolve the server address. Please check your API configuration.';
-        } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
-          errorMessage = `Cannot connect to server.\n\nServer: ${API_BASE_URL.replace('/api', '')}\n\nTroubleshooting:\n• Verify server is running\n• Check if device and server are on same WiFi\n• Try opening server URL in phone browser\n• Verify IP address (run 'ifconfig' or 'ipconfig')\n• Check firewall settings for port 3004\n• Ensure server listens on 0.0.0.0, not just localhost`;
-        } else if (error.message) {
-          errorMessage = `Network error: ${error.message}\n\nPlease check your internet connection and try again.`;
-        } else {
-          errorMessage = 'Network error occurred. Please check your connection and try again.';
-        }
-      } 
-      // API response errors (server responded with error)
-      else if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        
-        if (status === 400 || status === 422) {
-          errorTitle = 'Invalid Request';
-          errorMessage = data?.message || data?.error || 'Invalid phone number format. Please check and try again.';
-        } else if (status === 404) {
-          errorTitle = 'Not Found';
-          errorMessage = data?.message || 'API endpoint not found. Please check backend configuration.';
-        } else if (status === 403) {
-          errorTitle = 'Access Denied';
-          errorMessage = data?.message || 'Access denied. Please check your configuration.';
-        } else if (status === 500) {
-          errorTitle = 'Server Error';
-          errorMessage = 'Server error occurred. Please try again later.';
-        } else {
-          errorTitle = `Error ${status}`;
-          errorMessage = data?.message || data?.error || error.response.statusText || 'An error occurred.';
-        }
-      }
-      
-      Alert.alert(errorTitle, errorMessage)
+
+      // User-friendly production message
+      showError('Login failed', 'Could not send OTP. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   const handleTestConnection = async () => {
+    if (testingConnection) return
+
     setTestingConnection(true)
     try {
-      console.log('🔍 Testing connection to server...')
       const result = await testConnection()
-      
+
       if (result.success) {
-        Alert.alert(
-          '✅ Connection Successful',
-          `Server is reachable!\n\nServer: ${API_BASE_URL.replace('/api', '')}\nStatus: ${result.details?.status} ${result.details?.statusText}`
-        )
+        showSuccess('Connected', 'Server is reachable')
       } else {
         const serverUrl = API_BASE_URL.replace('/api', '')
-        const suggestions = result.details?.suggestions || []
-        const suggestionText = suggestions.slice(0, 5).join('\n\n')
-        
+        showError('Connection failed', 'Could not reach server')
+
+        // Optional: allow open in browser (safe)
         Alert.alert(
-          '❌ Connection Failed',
-          `Cannot connect to server.\n\nServer: ${serverUrl}\n\nError: ${result.error}\n\nTroubleshooting:\n${suggestionText}\n\nWould you like to open server URL in browser?`,
+          'Connection Failed',
+          `Open server URL in browser?\n\n${serverUrl}`,
           [
             {
-              text: 'Open in Browser',
-              onPress: () => {
+              text: 'Open',
+              onPress: () =>
                 Linking.openURL(serverUrl).catch(() => {
-                  Alert.alert('Error', 'Could not open browser')
-                })
-              }
+                  showError('Error', 'Could not open browser')
+                }),
             },
-            {
-              text: 'OK',
-              style: 'cancel'
-            }
+            { text: 'Cancel', style: 'cancel' },
           ]
         )
-        console.warn('🔍 Connection test failed:', result.details)
+
+        if (__DEV__) {
+          logger.debug('Connection test details', result)
+        }
       }
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to test connection: ' + (error?.message || 'Unknown error'))
-      console.error('Connection test error:', error)
+    } catch (err: unknown) {
+      if (__DEV__) logger.error('Connection test error', err)
+      showError('Test failed', 'Please try again.')
     } finally {
       setTestingConnection(false)
     }
   }
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          setLogoutLoading(true)
+          try {
+            await logout()
+            showInfo('Logged out', 'You are now logged out')
+          } catch {
+            showError('Logout failed', 'Please try again')
+          } finally {
+            setLogoutLoading(false)
+          }
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            setLogoutLoading(true)
-            try {
-              await logout()
-              // Stay on login page after logout
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.')
-            } finally {
-              setLogoutLoading(false)
-            }
-          },
-        },
-      ]
+      },
+    ])
+  }
+
+  // Loading while auth state resolving
+  if (authLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        </SafeAreaView>
+      </View>
     )
   }
 
-  // Create styles with theme colors
-  const styles = StyleSheet.create({
+  // Already logged in screen
+  if (isAuthenticated) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+          <View style={styles.centerContent}>
+            <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 30 }]}>
+              Already Logged In
+            </Text>
+
+            {!!user?.phoneNumber && (
+              <Text style={[styles.userInfo, { color: colors.placeholder, fontFamily: fonts.regular }]}>
+                Phone: {maskPhone(String(user.phoneNumber))}
+              </Text>
+            )}
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: logoutLoading ? 0.7 : 1,
+                  },
+                ]}
+                onPress={() => router.replace('/(tabs)/cards')}
+              >
+                <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontFamily: fonts.medium }}>
+                  Go to App
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.spacer} />
+
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: colors.primaryDark,
+                    opacity: logoutLoading ? 0.7 : 1,
+                  },
+                ]}
+                onPress={handleLogout}
+                disabled={logoutLoading}
+              >
+                {logoutLoading ? (
+                  <ActivityIndicator size="small" color={colors.buttonPrimaryText} />
+                ) : (
+                  <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontFamily: fonts.medium }}>
+                    Logout
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {__DEV__ && (
+                <Text style={[styles.serverText, { color: colors.placeholder, fontFamily: fonts.regular }]}>
+                  Server: {API_BASE_URL.replace('/api', '')}
+                </Text>
+              )}
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+
+  // Normal login form
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.logoSection}>
+              <SalonXLogo width={100} height={100} />
+              <Text style={[styles.appName, { color: colors.primary, fontFamily: fonts.bold, fontSize: 32 }]}>
+                SalonX
+              </Text>
+              <Text style={[styles.tagline, { color: colors.placeholder, fontFamily: fonts.regular, fontSize: 12 }]}>
+                Digital Solutions
+              </Text>
+            </View>
+
+            <View style={styles.formSection}>
+              <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32 }]}>Login</Text>
+
+              <TextInput
+                placeholder="Enter Phone Number (BD/USA)"
+                placeholderTextColor={colors.placeholder}
+                value={phone}
+                onChangeText={setPhone}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: colors.primary,
+                    color: colors.text,
+                    fontFamily: fonts.regular,
+                  },
+                ]}
+                keyboardType="phone-pad"
+                keyboardAppearance={isDark ? 'dark' : 'light'}
+                editable={!loading}
+                autoComplete="tel"
+                textContentType="telephoneNumber"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                blurOnSubmit={false}
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: loading ? 0.7 : 1,
+                  },
+                ]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={colors.buttonPrimaryText} />
+                ) : (
+                  <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontFamily: fonts.medium }}>
+                    Send OTP
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: colors.primary,
+                    opacity: testingConnection ? 0.7 : 1,
+                  },
+                ]}
+                onPress={handleTestConnection}
+                disabled={testingConnection}
+              >
+                {testingConnection ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={{ color: colors.primary, fontSize: 14, fontFamily: fonts.medium }}>
+                    🔍 Test Server Connection
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {__DEV__ && (
+                <Text style={[styles.serverText, { color: colors.placeholder, fontFamily: fonts.regular }]}>
+                  Server: {API_BASE_URL.replace('/api', '')}
+                </Text>
+              )}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </View>
+  )
+}
+
+export default Login
+
+function createStyles() {
+  return StyleSheet.create({
     container: {
       flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
       padding: 20,
       justifyContent: 'center',
+      paddingBottom: 40,
     },
     centerContent: {
       justifyContent: 'center',
@@ -188,12 +396,12 @@ const login = () => {
     },
     logoSection: {
       alignItems: 'center',
-      marginBottom: 40,
+      marginBottom: 36,
     },
     logo: {
       width: 100,
       height: 100,
-      marginBottom: 16,
+      marginBottom: 14,
     },
     appName: {
       letterSpacing: 2,
@@ -208,215 +416,53 @@ const login = () => {
     title: {
       fontSize: 24,
       fontWeight: 'bold',
-      marginBottom: 20,
+      marginBottom: 18,
       textAlign: 'center',
     },
     userInfo: {
-      fontSize: 16,
-      marginBottom: 10,
+      fontSize: 14,
+      marginTop: 6,
       textAlign: 'center',
     },
     input: {
-      marginBottom: 20,
+      borderWidth: 1,
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 16,
+      marginBottom: 14,
+      minHeight: 50,
     },
     buttonContainer: {
-      marginTop: 30,
+      marginTop: 18,
       width: '100%',
     },
     spacer: {
-      height: 15,
+      height: 12,
+    },
+    button: {
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+      width: '100%',
+    },
+    secondaryButton: {
+      marginTop: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 24,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+      width: '100%',
+      borderWidth: 1,
+    },
+    serverText: {
+      fontSize: 11,
+      textAlign: 'center',
+      marginTop: 10,
     },
   })
-
-  // Dynamic styles that use theme colors
-  const dynamicStyles = {
-    appNameText: {
-      color: colors.primary,
-    },
-    loadingIndicator: {
-      color: colors.primary,
-    },
-  }
-
-  // Show loading while checking auth status
-  if (authLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-          <View style={styles.centerContent}>
-            <ActivityIndicator size="large" color={dynamicStyles.loadingIndicator.color} />
-          </View>
-        </SafeAreaView>
-      </View>
-    )
-  }
-
-  // If user is already logged in, show logout option
-  if (isAuthenticated) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-          <View style={styles.centerContent}>
-            <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32 }]}>Already Logged In</Text>
-            {user?.phoneNumber && (
-              <Text style={[styles.userInfo, { color: colors.text, fontFamily: fonts.regular, fontSize: 16 }]}>Phone: {user.phoneNumber}</Text>
-            )}
-            {user?.email && (
-              <Text style={[styles.userInfo, { color: colors.text, fontFamily: fonts.regular, fontSize: 16 }]}>Email: {user.email}</Text>
-            )}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  {
-                    backgroundColor: colors.primaryDark,
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 44,
-                    width: '100%',
-                    opacity: logoutLoading ? 0.6 : 1,
-                  }
-                ]}
-                onPress={handleLogout}
-                disabled={logoutLoading}
-              >
-                {logoutLoading ? (
-                  <ActivityIndicator size="small" color={colors.buttonPrimaryText} />
-                ) : (
-                  <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontWeight: '600', fontFamily: fonts.medium }}>Logout</Text>
-                )}
-              </TouchableOpacity>
-              <View style={styles.spacer} />
-              <TouchableOpacity
-                style={[
-                  {
-                    backgroundColor: colors.primary,
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 44,
-                    width: '100%',
-                  }
-                ]}
-                onPress={() => router.replace('/(tabs)/cards')}
-              >
-                <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontWeight: '600', fontFamily: fonts.medium }}>Go to App</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
-    )
-  }
-
-  // Normal login form
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-        <View style={styles.logoSection}>
-          <Image
-            source={require('@/assets/images/logo.jpg')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={[styles.appName, dynamicStyles.appNameText, { fontFamily: fonts.bold, fontSize: 32 }]}>SalonX</Text>
-          <Text style={[styles.tagline, { color: colors.placeholder, fontFamily: fonts.regular, fontSize: 12 }]}>Digital Solutions</Text>
-        </View>
-        
-        <View style={styles.formSection}>
-          <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32 }]}>Login</Text>
-          <TextInput
-            placeholder="Enter Phone Number"
-            placeholderTextColor={colors.placeholder}
-            value={phone}
-            onChangeText={setPhone}
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.input,
-                borderColor: colors.primary,
-                borderWidth: 1,
-                borderRadius: 8,
-                padding: 12,
-                fontSize: 16,
-                color: colors.text,
-                fontFamily: fonts.regular,
-              }
-            ]}
-            keyboardType="phone-pad"
-            editable={!loading}
-          />
-          <TouchableOpacity
-            style={[
-              {
-                backgroundColor: colors.primary,
-                paddingVertical: 12,
-                paddingHorizontal: 24,
-                borderRadius: 8,
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 44,
-                width: '100%',
-                opacity: loading ? 0.6 : 1,
-              }
-            ]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={colors.buttonPrimaryText} />
-            ) : (
-              <Text style={{ color: colors.buttonPrimaryText, fontSize: 16, fontWeight: '600', fontFamily: fonts.medium }}>Send OTP</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              {
-                backgroundColor: colors.input,
-                borderColor: colors.primary,
-                borderWidth: 1,
-                paddingVertical: 10,
-                paddingHorizontal: 24,
-                borderRadius: 8,
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 44,
-                width: '100%',
-                marginTop: 12,
-                opacity: testingConnection ? 0.6 : 1,
-              }
-            ]}
-            onPress={handleTestConnection}
-            disabled={testingConnection}
-          >
-            {testingConnection ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600', fontFamily: fonts.medium }}>🔍 Test Server Connection</Text>
-            )}
-          </TouchableOpacity>
-          
-          <Text style={{ 
-            color: colors.placeholder, 
-            fontSize: 11, 
-            textAlign: 'center', 
-            marginTop: 8,
-            fontFamily: fonts.regular 
-          }}>
-            Server: {API_BASE_URL.replace('/api', '')}
-          </Text>
-        </View>
-      </SafeAreaView>
-    </View>
-  )
 }
-
-export default login

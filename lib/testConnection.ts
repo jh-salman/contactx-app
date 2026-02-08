@@ -1,5 +1,6 @@
 // Connection test utility for debugging network issues
 import { API_BASE_URL } from '@/config/api';
+import { logger } from './logger';
 import apiClient from './axios';
 
 /**
@@ -7,16 +8,16 @@ import apiClient from './axios';
  */
 const testWithFetch = async (url: string, timeout: number = 8000): Promise<{ success: boolean; status?: number; error?: string }> => {
   const startTime = Date.now();
-  console.log(`⏱️ Starting fetch test (timeout: ${timeout}ms)...`);
+  logger.debug(`Starting fetch test (timeout: ${timeout}ms)`);
   
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log(`⏱️ Fetch timeout reached (${timeout}ms), aborting...`);
+      logger.warn(`Fetch timeout reached (${timeout}ms), aborting`);
       controller.abort();
     }, timeout);
     
-    console.log(`📡 Making fetch request to: ${url}`);
+    logger.debug(`Making fetch request to: ${url}`);
     const fetchPromise = fetch(url, {
       method: 'GET',
       signal: controller.signal,
@@ -29,7 +30,7 @@ const testWithFetch = async (url: string, timeout: number = 8000): Promise<{ suc
     const elapsed = Date.now() - startTime;
     clearTimeout(timeoutId);
     
-    console.log(`✅ Fetch completed in ${elapsed}ms, status: ${response.status}`);
+    logger.debug(`Fetch completed in ${elapsed}ms, status: ${response.status}`);
     
     return {
       success: true,
@@ -37,7 +38,7 @@ const testWithFetch = async (url: string, timeout: number = 8000): Promise<{ suc
     };
   } catch (error: any) {
     const elapsed = Date.now() - startTime;
-    console.log(`❌ Fetch failed after ${elapsed}ms:`, error?.name || error?.message);
+    logger.warn(`Fetch failed after ${elapsed}ms`, { error: error?.name || error?.message });
     
     if (error.name === 'AbortError' || error?.message?.includes('aborted')) {
       return { success: false, error: `Timeout after ${elapsed}ms` };
@@ -58,20 +59,19 @@ export const testConnection = async (): Promise<{
   const serverUrl = API_BASE_URL.replace('/api', '');
   const endpointsToTry = ['/', '/health', '/api'];
   
-  console.log('🔍 Testing connection to:', API_BASE_URL);
-  console.log('🌐 Server URL:', serverUrl);
+  logger.debug('Testing connection', { apiBaseUrl: API_BASE_URL, serverUrl });
   
   // First, try with native fetch (simpler, bypasses axios)
-  console.log('🔍 Step 1: Testing with native fetch...');
+  logger.debug('Step 1: Testing with native fetch');
   for (let i = 0; i < endpointsToTry.length; i++) {
     const endpoint = endpointsToTry[i];
     const testUrl = `${serverUrl}${endpoint}`;
-    console.log(`\n🔍 [${i + 1}/${endpointsToTry.length}] Trying fetch: ${testUrl}`);
+    logger.debug(`[${i + 1}/${endpointsToTry.length}] Trying fetch: ${testUrl}`);
     
     const fetchResult = await testWithFetch(testUrl, 8000);
     
     if (fetchResult.success) {
-      console.log('✅ Fetch test successful!', {
+      logger.debug('Fetch test successful', {
         endpoint,
         status: fetchResult.status,
       });
@@ -86,25 +86,25 @@ export const testConnection = async (): Promise<{
         },
       };
     } else {
-      console.log(`⚠️ Fetch failed for ${endpoint}: ${fetchResult.error}`);
+      logger.warn(`Fetch failed for ${endpoint}`, { error: fetchResult.error });
       if (i < endpointsToTry.length - 1) {
-        console.log('⏭️ Trying next endpoint...');
+        logger.debug('Trying next endpoint');
       }
     }
   }
   
-  console.log('\n❌ All fetch attempts failed. Trying axios...');
+  logger.warn('All fetch attempts failed. Trying axios');
   
   // If fetch failed, try with axios
-  console.log('🔍 Step 2: Testing with axios...');
+  logger.debug('Step 2: Testing with axios');
   for (const endpoint of endpointsToTry) {
     try {
-      console.log(`🔍 Trying axios: ${endpoint}`);
+      logger.debug(`Trying axios: ${endpoint}`);
       const response = await apiClient.get(endpoint, {
         timeout: 10000, // 10 second timeout
       });
       
-      console.log('✅ Axios connection successful!', {
+      logger.debug('Axios connection successful', {
         endpoint,
         status: response.status,
         statusText: response.statusText,
@@ -123,7 +123,7 @@ export const testConnection = async (): Promise<{
     } catch (error: any) {
       // If we got a response (even if error), server is reachable
       if (error?.response) {
-        console.log('✅ Server is reachable (got response):', {
+        logger.debug('Server is reachable (got response)', {
           endpoint,
           status: error.response.status,
           statusText: error.response.statusText,
@@ -144,13 +144,13 @@ export const testConnection = async (): Promise<{
       
       // If it's a network error (no response), continue to next endpoint
       if (!error?.response && error?.code !== 'ECONNABORTED') {
-        console.log(`⚠️ Endpoint ${endpoint} failed:`, error?.code || error?.message);
+        logger.warn(`Endpoint ${endpoint} failed`, { code: error?.code, message: error?.message });
         continue;
       }
       
       // If timeout, try next endpoint
       if (error?.code === 'ECONNABORTED') {
-        console.log(`⏱️ Endpoint ${endpoint} timed out`);
+        logger.warn(`Endpoint ${endpoint} timed out`);
         continue;
       }
     }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logger } from "@/lib/logger";
 import { authService } from "@/services/authService";
 
 interface AuthContextType {
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       }
     } catch (error) {
-      console.error("Error checking auth status:", error);
+      logger.error("Error checking auth status", error);
       setIsAuthenticated(false);
       setUser(null);
     } finally {
@@ -55,14 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(true);
       setUser(user); // Store user object directly, not the whole userData
       
-      console.log('✅ Login successful:', {
+      logger.info('Login successful', {
         userId: user?.id,
         userEmail: user?.email,
         userName: user?.name,
-        fullUser: user,
       });
     } catch (error) {
-      console.error("Error during login:", error);
+      logger.error("Error during login", error);
       throw error;
     }
   };
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await authService.logout();
       } catch (apiError) {
         // Even if API call fails, clear local storage
-        console.error("Error calling logout API:", apiError);
+        logger.error("Error calling logout API", apiError);
       }
       
       // Clear local storage
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(false);
       setUser(null);
     } catch (error) {
-      console.error("Error during logout:", error);
+      logger.error("Error during logout", error);
       // Clear local storage even if there's an error
       try {
         await AsyncStorage.removeItem("authToken");
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
         setUser(null);
       } catch (storageError) {
-        console.error("Error clearing storage:", storageError);
+        logger.error("Error clearing storage", storageError);
       }
       throw error;
     }

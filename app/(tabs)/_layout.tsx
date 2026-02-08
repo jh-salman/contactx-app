@@ -59,6 +59,15 @@ function TabsInner() {
               alignItems: 'center',
               justifyContent: 'space-around',
               paddingBottom: 6,
+              // Glow shadow effect on top using tab bar background color (5x enhanced)
+              shadowColor: 'black',
+              shadowOffset: {
+                width: 0,
+                height: -5, // Negative for upward glow (5x: -8 * 5)
+              },
+              shadowOpacity: 1, // Max opacity (5x: 0.4 * 5, capped at 1.0)
+              shadowRadius: 120, // 5x: 12 * 5
+              elevation: 80, // For Android (5x: 8 * 5)
             },
           ]}
         >

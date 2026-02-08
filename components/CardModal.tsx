@@ -1,7 +1,9 @@
 import { SaveContactButton } from '@/components/SaveContactButton'
+import { SalonXLogo } from '@/components/SalonXLogo'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import { useSaveContact } from '@/hooks/useSaveContact'
+import { logger } from '@/lib/logger'
 import { apiService } from '@/services/apiService'
 import { FontAwesome5 } from '@expo/vector-icons'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
@@ -58,24 +60,12 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
 
     setLoading(true)
     try {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('🔍 FETCHING CARD DATA')
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('🆔 Card ID:', cardId)
-      console.log('📡 Source: QR Code')
-      console.log('⏰ Request Time:', new Date().toISOString())
-      
-      if (locationData) {
-        console.log('📍 Location Data (from device):', {
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
-          city: locationData.city,
-          country: locationData.country,
-        })
-      } else {
-        console.log('⚠️ No location data - backend will use IP-based detection')
-      }
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      logger.debug('FETCHING CARD DATA', {
+        cardId,
+        source: 'QR Code',
+        requestTime: new Date().toISOString(),
+        locationData: locationData || 'IP-based detection'
+      })
 
       // Pass location data to scanCard (or undefined if not available)
       const response = await apiService.scanCard(cardId, 'qr', locationData || undefined)
@@ -85,37 +75,29 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
       const cardScanData = responseData.cardScan || null
 
       // Log detailed scan information from API response
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('✅ CARD DATA RECEIVED')
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('📋 Full Response:', JSON.stringify(response, null, 2))
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      logger.debug('CARD DATA RECEIVED', { response })
 
       // Log scan-specific information if available
       if (cardScanData) {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('📍 SCAN LOCATION INFORMATION')
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.log('🌍 City:', cardScanData.city || 'N/A')
-        console.log('🌎 Country:', cardScanData.country || 'N/A')
-        console.log('📍 Latitude:', cardScanData.latitude || 'N/A')
-        console.log('📍 Longitude:', cardScanData.longitude || 'N/A')
-        console.log('⏰ Scan Timestamp:', cardScanData.scannedAt || cardScanData.createdAt || 'N/A')
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        logger.debug('SCAN LOCATION INFORMATION', {
+          city: cardScanData.city || 'N/A',
+          country: cardScanData.country || 'N/A',
+          latitude: cardScanData.latitude || 'N/A',
+          longitude: cardScanData.longitude || 'N/A',
+          scanTimestamp: cardScanData.scannedAt || cardScanData.createdAt || 'N/A'
+        })
       }
       
 
       // Log card information
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('🎴 CARD INFORMATION')
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('📝 Card Title:', cardData?.cardTitle || 'N/A')
-      console.log('🎨 Card Color:', cardData?.cardColor || 'N/A')
-      console.log('👤 Owner:', cardData?.personalInfo?.firstName || 'N/A', cardData?.personalInfo?.lastName || '')
-      console.log('🏢 Company:', cardData?.personalInfo?.company || 'N/A')
-      console.log('📧 Email:', cardData?.personalInfo?.email || 'N/A')
-      console.log('📱 Phone:', cardData?.personalInfo?.phoneNumber || cardData?.personalInfo?.phone || 'N/A')
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      logger.debug('CARD INFORMATION', {
+        cardTitle: cardData?.cardTitle || 'N/A',
+        cardColor: cardData?.cardColor || 'N/A',
+        owner: `${cardData?.personalInfo?.firstName || 'N/A'} ${cardData?.personalInfo?.lastName || ''}`,
+        company: cardData?.personalInfo?.company || 'N/A',
+        email: cardData?.personalInfo?.email || 'N/A',
+        phone: cardData?.personalInfo?.phoneNumber || cardData?.personalInfo?.phone || 'N/A'
+      })
 
       setCard(cardData)
       
@@ -127,13 +109,10 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
         }, 100)
       }
     } catch (error: any) {
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.error('❌ ERROR FETCHING CARD')
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.error('🆔 Card ID:', cardId)
-      console.error('❌ Error:', error.message || error)
-      console.error('📄 Response:', error.response?.data || 'N/A')
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      logger.error('ERROR FETCHING CARD', error, {
+        cardId,
+        response: error.response?.data || 'N/A'
+      })
 
       Alert.alert(
         'Error',
@@ -282,11 +261,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                         backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
                         borderColor: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)'
                       }]}>
-                        <Image
-                          source={require('@/assets/images/logo.jpg')}
-                          style={styles.avatarImage}
-                          resizeMode="contain"
-                        />
+                        <SalonXLogo width={60} height={60} />
                       </View>
                     ) : initials ? (
                       <View style={[styles.initialsContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)' }]}>

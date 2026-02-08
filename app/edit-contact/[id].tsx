@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useThemeColors, useThemeFonts, useTheme } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { StatusBar } from 'expo-status-bar'
 
 interface Contact {
@@ -75,7 +76,7 @@ const EditContact = () => {
         ])
       }
     } catch (error: any) {
-      console.error('Error fetching contact:', error)
+      logger.error('Error fetching contact', error)
       Alert.alert('Error', 'Failed to load contact', [
         { text: 'OK', onPress: () => router.back() }
       ])
@@ -123,7 +124,7 @@ const EditContact = () => {
         }
       ])
     } catch (error: any) {
-      console.error('Error updating contact:', error)
+      logger.error('Error updating contact', error)
       Alert.alert('Error', error.response?.data?.message || 'Failed to update contact')
     } finally {
       setSaving(false)

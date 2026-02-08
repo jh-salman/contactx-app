@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useThemeColors, useThemeFonts, useTheme } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { convertImageToBase64 } from '@/utils/imageUtils'
@@ -101,8 +102,8 @@ const CreateCard = () => {
 
       const response = await apiService.createCard(cardData)
       
-      console.log('✅ Card created successfully')
-      console.log('📦 API Response:', response)
+      logger.info('Card created successfully')
+      logger.debug('API Response', response)
       
       Alert.alert('Success', 'Card created successfully!', [
         { 
@@ -117,7 +118,7 @@ const CreateCard = () => {
         }
       ])
     } catch (error: any) {
-      console.error('Error creating card:', error)
+      logger.error('Error creating card', error)
       Alert.alert('Error', error.response?.data?.message || 'Failed to create card')
     } finally {
       setLoading(false)
@@ -493,7 +494,7 @@ const CreateCard = () => {
                     style={styles.imagePreview}
                     resizeMode="cover"
                     onError={(error) => {
-                      console.error('Image load error:', error)
+                      logger.error('Image load error', error)
                     }}
                   />
                   <TouchableOpacity
@@ -556,10 +557,10 @@ const CreateCard = () => {
                           const isPng = uri.toLowerCase().endsWith('.png') || uri.toLowerCase().includes('.png');
                           const mimeType = isPng ? 'image/png' : 'image/jpeg';
                           base64Image = `data:${mimeType};base64,${asset.base64}`;
-                          console.log('✅ Using base64 from ImagePicker');
+                          logger.debug('Using base64 from ImagePicker');
                         } else {
                           // Fallback to conversion
-                          console.log('⚠️ Base64 not available, converting...');
+                          logger.debug('Base64 not available, converting...');
                           base64Image = await convertImageToBase64(imageUri);
                         }
                         
@@ -578,14 +579,14 @@ const CreateCard = () => {
                           Alert.alert('Error', 'Failed to upload image. Please try again.')
                         }
                       } catch (uploadError: any) {
-                        console.error('Error uploading image:', uploadError)
+                        logger.error('Error uploading image', uploadError)
                         Alert.alert('Error', uploadError.response?.data?.message || uploadError.message || 'Failed to upload image. Please try again.')
                       } finally {
                         setLoading(false)
                       }
                     }
                   } catch (error: any) {
-                    console.error('Error picking image:', error)
+                    logger.error('Error picking image', error)
                     Alert.alert('Error', 'Failed to pick image. Please try again.')
                     setLoading(false)
                   }

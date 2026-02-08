@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { Paths, File } from 'expo-file-system';
+import { logger } from '@/lib/logger';
 
 /**
  * Convert local image URI to Base64 data URI
@@ -10,17 +11,17 @@ import { Paths, File } from 'expo-file-system';
  */
 export const convertImageToBase64 = async (uri: string): Promise<string | null> => {
   try {
-    console.log('🔄 Converting image to base64:', uri.substring(0, 100));
+    logger.debug('Converting image to base64', { uri: uri.substring(0, 100) });
     
     // If it's already a remote URL, return as-is
     if (uri.startsWith('http://') || uri.startsWith('https://')) {
-      console.log('✅ Already a remote URL');
+      logger.debug('Already a remote URL');
       return uri;
     }
     
     // If it's already a base64 data URI, return as-is
     if (uri.startsWith('data:image/')) {
-      console.log('✅ Already a base64 data URI');
+      logger.debug('Already a base64 data URI');
       return uri;
     }
     
@@ -30,7 +31,7 @@ export const convertImageToBase64 = async (uri: string): Promise<string | null> 
     
     // Handle iOS Photos library URIs - need to copy to accessible location first
     if (isPhotoLibrary) {
-      console.log('📸 Photos library URI detected, copying to accessible location...');
+      logger.debug('Photos library URI detected, copying to accessible location');
       try {
         // Copy to cache directory first using new API
         const filename = uri.split('/').pop() || `image_${Date.now()}.jpg`;
@@ -43,7 +44,7 @@ export const convertImageToBase64 = async (uri: string): Promise<string | null> 
           to: fileUri,
         });
         
-        console.log('✅ File copied to:', fileUri);
+        logger.debug('File copied', { fileUri });
         
         // Now read from the copied location
         const base64 = await FileSystem.readAsStringAsync(fileUri, {
@@ -58,11 +59,11 @@ export const convertImageToBase64 = async (uri: string): Promise<string | null> 
         }
         
         if (!base64 || base64.length === 0) {
-          console.error('❌ Empty base64 string after copy');
+          logger.error('Empty base64 string after copy');
           return null;
         }
         
-        console.log('✅ Base64 conversion successful from Photos library. Length:', base64.length);
+        logger.debug('Base64 conversion successful from Photos library', { length: base64.length });
         
         // Get file extension to determine MIME type
         const extension = filename.split('.').pop()?.toLowerCase() || 'jpg';
@@ -78,17 +79,17 @@ export const convertImageToBase64 = async (uri: string): Promise<string | null> 
         
         return `data:${mimeType};base64,${base64}`;
       } catch (copyError: any) {
-        console.error('❌ Error copying Photos library file:', copyError);
+        logger.error('Error copying Photos library file', copyError);
         // Fall through to try direct read
       }
     }
     
     if (!isLocalFile) {
-      console.warn('⚠️ Unknown URI format, returning as-is:', uri.substring(0, 50));
+      logger.warn('Unknown URI format, returning as-is', { uri: uri.substring(0, 50) });
       return uri;
     }
     
-    console.log('📁 Local file detected, reading...');
+    logger.debug('Local file detected, reading');
     
     // Convert local file to base64
     const base64 = await FileSystem.readAsStringAsync(uri, {
@@ -96,11 +97,11 @@ export const convertImageToBase64 = async (uri: string): Promise<string | null> 
     });
     
     if (!base64 || base64.length === 0) {
-      console.error('❌ Empty base64 string');
+      logger.error('Empty base64 string');
       return null;
     }
     
-    console.log('✅ Base64 conversion successful. Length:', base64.length);
+    logger.debug('Base64 conversion successful', { length: base64.length });
     
     // Get file extension to determine MIME type
     const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -116,13 +117,10 @@ export const convertImageToBase64 = async (uri: string): Promise<string | null> 
     
     // Return data URI format that server can process
     const dataUri = `data:${mimeType};base64,${base64}`;
-    console.log('✅ Data URI created. MIME type:', mimeType);
+    logger.debug('Data URI created', { mimeType });
     return dataUri;
   } catch (error: any) {
-    console.error('❌ Error converting image to base64:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
+    logger.error('Error converting image to base64', error, {
       uri: uri.substring(0, 100),
     });
     return null;

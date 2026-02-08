@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native'
 import { useThemeColors, useThemeFonts } from '@/context/ThemeContext'
+import { logger } from '@/lib/logger'
 import { apiService } from '@/services/apiService'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { useFocusEffect } from 'expo-router'
@@ -19,7 +20,7 @@ export default function VisitorShareRequests() {
       const sharesData = response.data || response || []
       setShares(Array.isArray(sharesData) ? sharesData : [])
     } catch (error: any) {
-      console.error('Error fetching shares:', error)
+      logger.error('Error fetching shares', error)
       Alert.alert('Error', 'Failed to load share requests')
     } finally {
       setLoading(false)
