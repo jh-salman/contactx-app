@@ -62,7 +62,9 @@
         "ACCESS_NETWORK_STATE",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -74,7 +76,11 @@
       [
         "expo-barcode-scanner",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes.",
+          "modes": [
+            "barCode",
+            "qr"
+          ]
         }
       ],
       [
@@ -108,8 +114,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2f9f10bc-cde4-4c7a-a69b-e21487b8e865"
+        "projectId": "02d6f478-ac06-4592-ab99-0779cd13e51f"
       }
-    }
+    },
+    "owner": "salonx"
   }
 }
