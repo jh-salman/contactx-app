@@ -1,8 +1,6 @@
-import { API_BASE_URL } from '@/config/api'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import { SalonXLogo } from '@/components/SalonXLogo'
-import { testConnection } from '@/lib/testConnection'
 import { logger } from '@/lib/logger'
 import { authService } from '@/services/authService'
 import { useRouter } from 'expo-router'
@@ -12,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -62,7 +59,6 @@ const Login = () => {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
-  const [testingConnection, setTestingConnection] = useState(false)
 
   const router = useRouter()
   const { isAuthenticated, user, logout, isLoading: authLoading } = useAuth()
@@ -127,47 +123,6 @@ const Login = () => {
     }
   }
 
-  const handleTestConnection = async () => {
-    if (testingConnection) return
-
-    setTestingConnection(true)
-    try {
-      const result = await testConnection()
-
-      if (result.success) {
-        showSuccess('Connected', 'Server is reachable')
-      } else {
-        const serverUrl = API_BASE_URL.replace('/api', '')
-        showError('Connection failed', 'Could not reach server')
-
-        // Optional: allow open in browser (safe)
-        Alert.alert(
-          'Connection Failed',
-          `Open server URL in browser?\n\n${serverUrl}`,
-          [
-            {
-              text: 'Open',
-              onPress: () =>
-                Linking.openURL(serverUrl).catch(() => {
-                  showError('Error', 'Could not open browser')
-                }),
-            },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        )
-
-        if (__DEV__) {
-          logger.debug('Connection test details', result)
-        }
-      }
-    } catch (err: unknown) {
-      if (__DEV__) logger.error('Connection test error', err)
-      showError('Test failed', 'Please try again.')
-    } finally {
-      setTestingConnection(false)
-    }
-  }
-
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -194,7 +149,7 @@ const Login = () => {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
@@ -208,7 +163,7 @@ const Login = () => {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.centerContent}>
             <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 30 }]}>
               Already Logged In
@@ -257,12 +212,6 @@ const Login = () => {
                   </Text>
                 )}
               </TouchableOpacity>
-
-              {__DEV__ && (
-                <Text style={[styles.serverText, { color: colors.placeholder, fontFamily: fonts.regular }]}>
-                  Server: {API_BASE_URL.replace('/api', '')}
-                </Text>
-              )}
             </View>
           </View>
         </SafeAreaView>
@@ -279,7 +228,7 @@ const Login = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
@@ -342,33 +291,6 @@ const Login = () => {
                   </Text>
                 )}
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  {
-                    backgroundColor: colors.input,
-                    borderColor: colors.primary,
-                    opacity: testingConnection ? 0.7 : 1,
-                  },
-                ]}
-                onPress={handleTestConnection}
-                disabled={testingConnection}
-              >
-                {testingConnection ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Text style={{ color: colors.primary, fontSize: 14, fontFamily: fonts.medium }}>
-                    🔍 Test Server Connection
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              {__DEV__ && (
-                <Text style={[styles.serverText, { color: colors.placeholder, fontFamily: fonts.regular }]}>
-                  Server: {API_BASE_URL.replace('/api', '')}
-                </Text>
-              )}
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -387,8 +309,9 @@ function createStyles() {
     scrollContent: {
       flexGrow: 1,
       padding: 20,
-      justifyContent: 'center',
-      paddingBottom: 40,
+      paddingTop: 56,
+      paddingBottom: 80,
+      justifyContent: 'flex-start',
     },
     centerContent: {
       justifyContent: 'center',
@@ -396,7 +319,7 @@ function createStyles() {
     },
     logoSection: {
       alignItems: 'center',
-      marginBottom: 36,
+      marginBottom: 48,
     },
     logo: {
       width: 100,
@@ -447,22 +370,6 @@ function createStyles() {
       justifyContent: 'center',
       minHeight: 44,
       width: '100%',
-    },
-    secondaryButton: {
-      marginTop: 12,
-      paddingVertical: 10,
-      paddingHorizontal: 24,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: 44,
-      width: '100%',
-      borderWidth: 1,
-    },
-    serverText: {
-      fontSize: 11,
-      textAlign: 'center',
-      marginTop: 10,
     },
   })
 }

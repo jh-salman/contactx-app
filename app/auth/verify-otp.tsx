@@ -70,27 +70,16 @@ const VerifyOTP = () => {
 
     // Use safeAsync for production-safe error handling
     const result = await safeAsync(async () => {
-      // Call backend API to verify OTP
       const response = await authService.verifyOTP(phone, otp)
-      
-      // Validate response
-      if (!response) {
-        throw new Error('Invalid response from server')
-      }
+      if (!response) throw new Error('Invalid response from server')
 
-      const token = response.token || response.data?.token
-      const user = response.user || response.data?.user
+      const token = response.token ?? response.data?.token ?? response.session?.token
+      const user = response.user ?? response.data?.user ?? response.session?.user
+      if (response.success === false || response.error) throw new Error(response.error || response.message || 'OTP verification failed')
+      if (!token || typeof token !== 'string' || !token.trim()) throw new Error('Authentication token not received')
+      if (!user || !user.id) throw new Error('User data not received')
 
-      if (!token) {
-        throw new Error('Authentication token not received')
-      }
-
-      // Store auth data in context
-      await login({
-        token,
-        user,
-      })
-
+      await login({ token, user })
       return { success: true, token, user }
     }, 'Failed to verify OTP')
 
@@ -141,22 +130,38 @@ const VerifyOTP = () => {
         throw serviceError
       }
       
-      // Validate response structure
+      // Validate response structure - CRITICAL: Must check before proceeding
       if (!response) {
         showError('Invalid Response', 'Server returned an invalid response. Please try again.')
         setLoading(false)
         return
       }
 
-      const token = response.token || response.data?.token
-      const user = response.user || response.data?.user
-
-      if (!token) {
-        showError('Authentication Failed', 'Token not received. Please try again.')
+      if (response.success === false || response.error || response.status === 'error') {
+        const errorMessage = response.error || response.message || 'OTP verification failed'
+        showError('Invalid OTP', errorMessage)
+        setLoading(false)
+        setOtp('')
         return
       }
 
-      // Store auth data
+      const token = response.token ?? response.data?.token ?? response.session?.token
+      const user = response.user ?? response.data?.user ?? response.session?.user
+
+      if (!token || typeof token !== 'string' || token.trim() === '') {
+        showError('Authentication Failed', 'Token not received. Please try again.')
+        setLoading(false)
+        setOtp('')
+        return
+      }
+      if (!user || !user.id) {
+        showError('Authentication Failed', 'User data not received. Please try again.')
+        setLoading(false)
+        setOtp('')
+        return
+      }
+
+      // Have token and user – proceed with login (no need to require response.success when API returns 200)
       await login({ token, user })
 
       showSuccess('Verified!', 'Login successful')
@@ -195,15 +200,25 @@ const VerifyOTP = () => {
 
       // API response errors - Only show toast, no console/warn, no error screen
       const status = error.response?.status
-      const data = error.response?.data as { message?: string; error?: string } | undefined
+      const data = error.response?.data as { message?: string; error?: string | { message?: string } } | undefined
       
       if (status === 400 || status === 422) {
-        const message = data?.message || data?.error || 'Invalid OTP. Please check and try again.'
-        showError('Invalid OTP', message)
+        const err = data?.error
+        const message =
+          data?.message ||
+          (typeof err === 'string' ? err : err?.message) ||
+          'Invalid OTP or request rejected. Please try again.'
+        showError('Verification Failed', message)
+        // Clear OTP input on invalid OTP
+        setOtp('')
       } else if (status === 401) {
         showError('Invalid OTP', 'OTP expired or invalid. Please request a new OTP.')
+        setOtp('')
       } else if (status === 403) {
-        showError('Access Denied', data?.message || 'Access denied. Please try again.')
+        const err = data?.error
+        const msg = data?.message || (typeof err === 'string' ? err : err?.message)
+        showError('Too Many Attempts', msg || 'Too many wrong tries. Please request a new OTP.')
+        setOtp('')
       } else if (status === 404) {
         showError('Not Found', 'API endpoint not found. Please contact support.')
       } else if (status === 429) {
@@ -211,12 +226,17 @@ const VerifyOTP = () => {
       } else if (status === 500) {
         showError('Server Error', 'Server error occurred. Please try again later.')
       } else {
-        const message = data?.message || data?.error || 'An error occurred. Please try again.'
+        const err = data?.error
+        const message =
+          data?.message ||
+          (typeof err === 'string' ? err : err?.message) ||
+          'An error occurred. Please try again.'
         showError('Error', message)
       }
       
-      // Ensure loading state is reset
+      // Ensure loading state is reset and prevent navigation
       setLoading(false)
+      // DO NOT navigate - stay on verify screen
     }
   }
 

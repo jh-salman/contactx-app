@@ -2,7 +2,7 @@
   "expo": {
     "name": "SalonX",
     "slug": "salonx",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/salonx-logo.png",
     "scheme": "salonx",
@@ -74,19 +74,9 @@
     "plugins": [
       "expo-router",
       [
-        "expo-barcode-scanner",
-        {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes.",
-          "modes": [
-            "barCode",
-            "qr"
-          ]
-        }
-      ],
-      [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes."
         }
       ],
       [
@@ -110,6 +100,15 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "updates": {
+      "url": "https://u.expo.dev/02d6f478-ac06-4592-ab99-0779cd13e51f",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "extra": {
       "router": {},

@@ -32,6 +32,7 @@ const getOriginUrl = () => {
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true, // Send cookies so Better Auth can link verify to send-otp (fixes verify failure)
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -51,16 +52,11 @@ apiClient.interceptors.request.use(
       // For mobile apps, we send the API base URL as origin (which should be in trustedOrigins)
       if (config.headers) {
         const originUrl = getOriginUrl();
-        
-        // Set Origin header - Better Auth checks this against trustedOrigins
-        // For Vercel, mobile apps send the API URL itself as origin
         (config.headers as any).Origin = originUrl;
-        
-        // Additional headers for Android compatibility and Better Auth
+        (config.headers as any).Referer = originUrl;
         (config.headers as any)['X-Origin'] = originUrl;
         (config.headers as any)['X-Requested-Origin'] = originUrl;
         (config.headers as any)['X-Forwarded-Origin'] = originUrl;
-        (config.headers as any).Referer = originUrl;
         
         // Add timezone header
         try {

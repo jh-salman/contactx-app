@@ -1,9 +1,7 @@
 import { logger } from '@/lib/logger';
 
-// API Base URL Configuration
-const DEFAULT_API_URL = __DEV__ 
-  ? 'https://contact-x-api.vercel.app/api' // Development tunnel
-  : 'https://contact-x-api.vercel.app/api'; // Production Vercel
+// API Base URL Configuration - Same for both development and production
+const DEFAULT_API_URL = 'https://contactx.xsalonx.com/api';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
 
