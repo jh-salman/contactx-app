@@ -12,6 +12,7 @@ import { convertImageToBase64 } from '@/utils/imageUtils'
 import { uploadImageToCloudinary } from '@/services/imageUploadService'
 import { SalonXLogo } from '@/components/SalonXLogo'
 import { UploadLoadingOverlay } from '@/components/UploadLoadingOverlay'
+import { FloatingOutlinedInput } from '@/components/FloatingOutlinedInput'
 import { moderateScale, verticalScale } from 'react-native-size-matters'
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen'
 
@@ -44,7 +45,14 @@ const CreateCard = () => {
     cover: '',
     imageLayout: null as ImageLayoutId | null,
     socialLinks: [] as Array<{ type: string; url: string }>,
+    middleName: '',
+    prefix: '',
+    suffix: '',
+    pronoun: '',
+    preferred: '',
+    maidenName: '',
   })
+  const [personalDetailExpanded, setPersonalDetailExpanded] = useState<Record<string, boolean>>({})
   const [lastUploadedField, setLastUploadedField] = useState<ImageFieldType | null>(null)
 
   const LAYOUT_OPTIONS: { id: ImageLayoutId; label: string }[] = [
@@ -337,7 +345,7 @@ const CreateCard = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.backgroundSecondary,
     },
     header: {
       flexDirection: 'row',
@@ -408,6 +416,35 @@ const CreateCard = () => {
       minHeight: MS(48),
       color: colors.inputText,
       backgroundColor: colors.inputBackground,
+    },
+    personalDetailInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: MS(10),
+      paddingVertical: MS(14),
+      paddingHorizontal: MS(16),
+      fontSize: MS(16),
+      minHeight: MS(52),
+      color: colors.inputText,
+      backgroundColor: colors.inputBackground,
+    },
+    personalDetailChipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: MS(6),
+      marginBottom: MS(6),
+    },
+    personalDetailChip: {
+      
+      // alignItems: 'center',
+      // justifyContent: 'center',
+      paddingVertical: MS(7),
+      paddingHorizontal: MS(16),
+      borderRadius: MS(25),
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      
     },
     colorOptions: {
       flexDirection: 'row',
@@ -765,7 +802,7 @@ const CreateCard = () => {
     },
     layoutSkeletonLabel: {
       fontSize: MS(10),
-      marginTop: MS(6),
+      // marginTop: MS(6),
       textAlign: 'center',
     },
     modalContainer: {
@@ -1436,61 +1473,200 @@ const CreateCard = () => {
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontFamily: fonts.medium, fontSize: MS(18), color: colors.text }]}>Personal Information *</Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>First Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter first name"
-                placeholderTextColor={colors.placeholder}
+            <Text style={[styles.sectionTitle, { fontFamily: fonts.medium, fontSize: MS(18), color: colors.text }]}>Personal details</Text>
+
+            <View style={[styles.inputGroup, { marginBottom: MS(14) }]}>
+              <FloatingOutlinedInput
+                label="First name"
                 value={formData.firstName}
                 onChangeText={(value) => handleInputChange('firstName', value)}
+                labelBgColor={colors.card}
+                autoCapitalize="words"
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Last Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter last name"
-                placeholderTextColor={colors.placeholder}
+            <View style={[styles.inputGroup, { marginBottom: MS(18) }]}>
+              <FloatingOutlinedInput
+                label="Last name"
                 value={formData.lastName}
                 onChangeText={(value) => handleInputChange('lastName', value)}
+                labelBgColor={colors.card}
+                autoCapitalize="words"
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Job Title *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter job title"
-                placeholderTextColor={colors.placeholder}
+            {/* Optional fields: show input after Last name when chip clicked; chip hides. Input shows delete on focus; delete hides input and shows chip again. */}
+            {personalDetailExpanded.middleName && (
+              <View style={styles.inputGroup}>
+                <FloatingOutlinedInput
+                  label="Middle name"
+                  value={formData.middleName}
+                  onChangeText={(v) => handleInputChange('middleName', v)}
+                  labelBgColor={colors.card}
+                  autoCapitalize="words"
+                  rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
+                  onPressRightIcon={() => { handleInputChange('middleName', ''); setPersonalDetailExpanded((p) => ({ ...p, middleName: false })) }}
+                  showRightIconOnlyWhenFocused
+                />
+              </View>
+            )}
+            {personalDetailExpanded.prefix && (
+              <View style={styles.inputGroup}>
+                <FloatingOutlinedInput
+                  label="Prefix"
+                  value={formData.prefix}
+                  onChangeText={(v) => handleInputChange('prefix', v)}
+                  labelBgColor={colors.card}
+                  rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
+                  onPressRightIcon={() => { handleInputChange('prefix', ''); setPersonalDetailExpanded((p) => ({ ...p, prefix: false })) }}
+                  showRightIconOnlyWhenFocused
+                />
+              </View>
+            )}
+            {personalDetailExpanded.suffix && (
+              <View style={styles.inputGroup}>
+                <FloatingOutlinedInput
+                  label="Suffix"
+                  value={formData.suffix}
+                  onChangeText={(v) => handleInputChange('suffix', v)}
+                  labelBgColor={colors.card}
+                  rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
+                  onPressRightIcon={() => { handleInputChange('suffix', ''); setPersonalDetailExpanded((p) => ({ ...p, suffix: false })) }}
+                  showRightIconOnlyWhenFocused
+                />
+              </View>
+            )}
+            {personalDetailExpanded.pronoun && (
+              <View style={styles.inputGroup}>
+                <FloatingOutlinedInput
+                  label="Pronoun"
+                  value={formData.pronoun}
+                  onChangeText={(v) => handleInputChange('pronoun', v)}
+                  labelBgColor={colors.card}
+                  rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
+                  onPressRightIcon={() => { handleInputChange('pronoun', ''); setPersonalDetailExpanded((p) => ({ ...p, pronoun: false })) }}
+                  showRightIconOnlyWhenFocused
+                />
+              </View>
+            )}
+            {personalDetailExpanded.preferred && (
+              <View style={styles.inputGroup}>
+                <FloatingOutlinedInput
+                  label="Preferred name"
+                  value={formData.preferred}
+                  onChangeText={(v) => handleInputChange('preferred', v)}
+                  labelBgColor={colors.card}
+                  autoCapitalize="words"
+                  rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
+                  onPressRightIcon={() => { handleInputChange('preferred', ''); setPersonalDetailExpanded((p) => ({ ...p, preferred: false })) }}
+                  showRightIconOnlyWhenFocused
+                />
+              </View>
+            )}
+            {personalDetailExpanded.maidenName && (
+              <View style={styles.inputGroup}>
+                <FloatingOutlinedInput
+                  label="Maiden name"
+                  value={formData.maidenName}
+                  onChangeText={(v) => handleInputChange('maidenName', v)}
+                  labelBgColor={colors.card}
+                  autoCapitalize="words"
+                  rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
+                  onPressRightIcon={() => { handleInputChange('maidenName', ''); setPersonalDetailExpanded((p) => ({ ...p, maidenName: false })) }}
+                  showRightIconOnlyWhenFocused
+                />
+              </View>
+            )}
+
+            <View style={{ marginBottom: MS(14) }}>
+              <View style={styles.personalDetailChipsRow}>
+                {!personalDetailExpanded.middleName && (
+                  <TouchableOpacity
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={() => setPersonalDetailExpanded((p) => ({ ...p, middleName: true }))}
+                    activeOpacity={0.7}
+                  >
+<Text style={[styles.layoutSkeletonLabel, { fontFamily: fonts.bold, fontSize: MS(13), fontWeight: '500', color: colors.primary }]}>+ Middle name</Text>
+                  </TouchableOpacity>
+                )}
+                {!personalDetailExpanded.prefix && (
+                  <TouchableOpacity
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={() => setPersonalDetailExpanded((p) => ({ ...p, prefix: true }))}
+                    activeOpacity={0.7}
+                  >
+<Text style={[styles.layoutSkeletonLabel, { fontFamily: fonts.bold, fontSize: MS(13), fontWeight: '500', color: colors.primary }]}>+ Prefix</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View style={styles.personalDetailChipsRow}>
+                {!personalDetailExpanded.suffix && (
+                  <TouchableOpacity
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={() => setPersonalDetailExpanded((p) => ({ ...p, suffix: true }))}
+                    activeOpacity={0.7}
+                  >
+<Text style={[styles.layoutSkeletonLabel, { fontFamily: fonts.bold, fontSize: MS(13), fontWeight: '500', color: colors.primary }]}>+ Suffix</Text>
+                  </TouchableOpacity>
+                )}
+                {!personalDetailExpanded.pronoun && (
+                  <TouchableOpacity
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={() => setPersonalDetailExpanded((p) => ({ ...p, pronoun: true }))}
+                    activeOpacity={0.7}
+                  >
+<Text style={[styles.layoutSkeletonLabel, { fontFamily: fonts.bold, fontSize: MS(13), fontWeight: '500', color: colors.primary }]}>+ Pronoun</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View style={styles.personalDetailChipsRow}>
+                {!personalDetailExpanded.preferred && (
+                  <TouchableOpacity
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={() => setPersonalDetailExpanded((p) => ({ ...p, preferred: true }))}
+                    activeOpacity={0.7}
+                  >
+<Text style={[styles.layoutSkeletonLabel, { fontFamily: fonts.bold, fontSize: MS(13), fontWeight: '500', color: colors.primary, alignSelf: 'center' }]}>+ Preferred</Text>
+                  </TouchableOpacity>
+                )}
+                {!personalDetailExpanded.maidenName && (
+                  <TouchableOpacity
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={() => setPersonalDetailExpanded((p) => ({ ...p, maidenName: true }))}
+                    activeOpacity={0.7}
+                  >
+<Text style={[styles.layoutSkeletonLabel, { fontFamily: fonts.bold, fontSize: MS(13), fontWeight: '500', color: colors.primary }]}>+ Maiden name</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            <View style={[styles.inputGroup, { marginTop: personalDetailExpanded.middleName || personalDetailExpanded.prefix || personalDetailExpanded.suffix || personalDetailExpanded.pronoun || personalDetailExpanded.preferred || personalDetailExpanded.maidenName ? MS(8) : 0 }]}>
+              <FloatingOutlinedInput
+                label="Job title"
                 value={formData.jobTitle}
                 onChangeText={(value) => handleInputChange('jobTitle', value)}
+                labelBgColor={colors.card}
+                autoCapitalize="words"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Phone Number *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter phone number"
-                placeholderTextColor={colors.placeholder}
+              <FloatingOutlinedInput
+                label="Phone number"
                 value={formData.phoneNumber}
                 onChangeText={(value) => handleInputChange('phoneNumber', value)}
+                labelBgColor={colors.card}
                 keyboardType="phone-pad"
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Email *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter email address"
-                placeholderTextColor={colors.placeholder}
+              <FloatingOutlinedInput
+                label="Email address"
                 value={formData.email}
                 onChangeText={(value) => handleInputChange('email', value)}
+                labelBgColor={colors.card}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
