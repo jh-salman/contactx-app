@@ -43,116 +43,66 @@ export const Fonts = {
 
 
 
+// Light: white background, black text (simple)
 export const LightColors = {
-  // Brand
-  primary: '#EC4899',        // Pink
-  primaryDark: '#BE185D',    // Deep Pink
-  primaryLight: '#F9A8D4',   // Soft Pink
+  primary: '#000000',
+  primaryDark: '#000000',
+  primaryLight: '#374151',
+  brand: '#C94DB2',
 
-  // Base
-  background: '#FFF7FB',     // Very Light Pink White
-  text: '#0F172A',           // Dark Navy
+  background: '#FFFFFF',
+  backgroundSecondary: '#F5F5F5',
+  text: '#000000',
 
-  // UI
-  border: '#EC4899',         // Light Grey
-  input: '#FFFFFF',          // Input / Card bg
-  placeholder: '#94A3B8',    // Muted Grey
+  border: '#E5E7EB',
+  borderLight: '#F3F4F6',
+  input: '#FFFFFF',
+  inputBackground: '#FFFFFF',
+  inputText: '#000000',
+  placeholder: '#9CA3AF',
 
-  // Additional UI Colors
-  card: '#FFFFFF',           // Card background
-  textSecondary: '#64748B',  // Secondary text
-  textTertiary: '#94A3B8',   // Tertiary text
-  backgroundSecondary: '#F8FAFC', // Secondary background
-  borderLight: '#F1F5F9',    // Light border
-  inputText: '#0F172A',     // Input text color
-  inputBackground: '#FFFFFF', // Input background
-  buttonPrimaryText: '#FFFFFF', // Button text on primary
-  error: '#EF4444',          // Error color
+  card: '#FFFFFF',
+  textSecondary: '#374151',
+  textTertiary: '#6B7280',
 
-  // Tab Bar
-  tabBar: '#FFFFFF',         // Tab bar background
-  tabBarBorder: '#E5E7EB',   // Tab bar border
-  tabIconSelected: '#EC4899', // Selected tab icon color
-  tabIconDefault: '#94A3B8', // Unselected tab icon color
+  buttonPrimaryText: '#FFFFFF',
+  error: '#DC2626',
+
+  tabBar: '#FFFFFF',
+  tabBarBorder: '#E5E7EB',
+  tabIconSelected: '#000000',
+  tabIconDefault: '#6B7280',
 };
 
-
-// Theme Colors - Dark Mode
-// export const DarkColors = {
-//   // Brand
-//   primary: '#EC4899',        // Pink
-//   primaryDark: '#BE185D',    // Deep Pink
-//   primaryLight: '#F9A8D4',   // Soft Pink
-
-//   // Base
-//   background: '#020617',     // Dark Navy
-//   text: '#F8FAFC',           // Soft White
-
-//   // UI
-//   border: '#1E293B',         // Dark Grey
-//   input: '#0F172A',          // Input / Card bg
-//   placeholder: '#64748B',    // Muted text
-
-//   // Additional UI Colors
-//   card: '#0F172A',           // Card background
-//   textSecondary: '#94A3B8',  // Secondary text
-//   textTertiary: '#64748B',   // Tertiary text
-//   backgroundSecondary: '#1E293B', // Secondary background
-//   borderLight: '#334155',    // Light border
-//   inputText: '#F8FAFC',      // Input text color
-//   inputBackground: '#0F172A', // Input background
-//   buttonPrimaryText: '#FFFFFF', // Button text on primary
-//   error: '#EF4444',          // Error color
-
-//   // Tab Bar
-//   tabBar: '#0F172A',         // Tab bar background (dark)
-//   tabBarBorder: '#1E293B',  // Tab bar border (dark)
-//   tabIconSelected: '#EC4899', // Selected tab icon color
-//   tabIconDefault: '#64748B', // Unselected tab icon color
-// };
-
+// Dark: black background, white text (light এর বিপরীত)
 export const DarkColors = {
-  // Brand / Accent (used for highlights, charts)
-  primary: '#22D3EE',        // Neon Cyan (main accent)
-  primaryDark: '#0EA5B7',
-  primaryLight: '#67E8F9',
+  primary: '#FFFFFF',
+  primaryDark: '#FFFFFF',
+  primaryLight: '#D1D5DB',
+  brand: '#C94DB2',
 
-  success: '#4ADE80',        // Neon Green
-  warning: '#FACC15',        // Yellow
-  info: '#38BDF8',           // Blue
-  accentPurple: '#A855F7',   // Purple (charts)
+  background: '#000000',
+  backgroundSecondary: '#111111',
+  text: '#FFFFFF',
 
-  // Base
-  background: '#020617',     // Ultra dark navy (main bg)
-  backgroundSecondary: '#050B1E', // Section bg
-  text: '#E5E7EB',           // Soft white
-
-  // Surface
-  card: '#0B122E',           // Dashboard card bg
-  input: '#0B122E',
-  inputBackground: '#0B122E',
-
-  // Borders
-  border: '#111827',
+  border: '#374151',
   borderLight: '#1F2937',
+  input: '#171717',
+  inputBackground: '#171717',
+  inputText: '#FFFFFF',
+  placeholder: '#6B7280',
 
-  // Text
-  textSecondary: '#94A3B8',
-  textTertiary: '#64748B',
-  placeholder: '#64748B',
-  inputText: '#F8FAFC',
+  card: '#171717',
+  textSecondary: '#D1D5DB',
+  textTertiary: '#9CA3AF',
 
-  // Status
-  error: '#F87171',
+  buttonPrimaryText: '#000000',
+  error: '#EF4444',
 
-  // Tab Bar
-  tabBar: '#050B1E',
-  tabBarBorder: '#111827',
-  tabIconSelected: '#22D3EE',
-  tabIconDefault: '#64748B',
-
-  // Buttons
-  buttonPrimaryText: '#020617',
+  tabBar: '#000000',
+  tabBarBorder: '#374151',
+  tabIconSelected: '#FFFFFF',
+  tabIconDefault: '#9CA3AF',
 };
 
 

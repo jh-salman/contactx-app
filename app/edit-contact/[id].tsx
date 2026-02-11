@@ -219,7 +219,7 @@ const EditContact = () => {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
               <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
@@ -238,7 +238,7 @@ const EditContact = () => {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />

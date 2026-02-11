@@ -1,29 +1,27 @@
 // components/SalonXLogo.tsx
 
 import React from 'react';
-import { SvgXml } from 'react-native-svg';
-import { useTheme } from '@/context/ThemeContext';
-import { SALONX_LOGO_WHITE, SALONX_LOGO_DARK } from '@/constants/logo';
+import { Image, ImageStyle } from 'react-native';
+
+const LOGO_SOURCE = require('@/assets/images/salonx-logo-white-theme.png');
 
 interface SalonXLogoProps {
   width?: number;
   height?: number;
-  style?: any;
+  style?: ImageStyle;
 }
 
-export const SalonXLogo = ({ 
-  width = 100, 
+export const SalonXLogo = ({
+  width = 100,
   height = 100,
-  style 
+  style,
 }: SalonXLogoProps) => {
-  const { isDark } = useTheme();
-  
   return (
-    <SvgXml
-      xml={isDark ? SALONX_LOGO_WHITE : SALONX_LOGO_DARK}
-      width={width}
-      height={height}
-      style={style}
+    <Image
+      source={LOGO_SOURCE}
+      style={[{ width, height }, style]}
+      resizeMode="contain"
+      accessibilityLabel="SalonX Logo"
     />
   );
 };

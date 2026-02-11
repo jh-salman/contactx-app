@@ -304,7 +304,7 @@ const cards = () => {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { fontFamily: fonts.regular, fontSize: 16 }]}>Loading cards...</Text>
@@ -318,7 +318,7 @@ const cards = () => {
   if (error && cards.length === 0 && !error.toLowerCase().includes('no card found')) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
           <View style={styles.centerContent}>
             <Text style={[styles.errorText, { color: colors.primaryDark, fontFamily: fonts.regular, fontSize: 16 }]}>{error}</Text>
           </View>
@@ -332,7 +332,7 @@ const cards = () => {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <SafeAreaView 
-          style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative" }}
+          style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative", backgroundColor: colors.background }}
           edges={['top']}
         >
           {/* Settings Button - Positioned with safe area insets */}
@@ -372,7 +372,7 @@ const cards = () => {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView 
-        style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative" }}
+        style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative", backgroundColor: colors.background }}
         edges={['top']}
       >
         {/* Card Header - Left: up/down toggle, Middle: title, Right: edit */}

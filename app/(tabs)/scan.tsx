@@ -347,7 +347,7 @@ const scan = () => {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { fontFamily: fonts.regular, fontSize: 16 }]}>Requesting camera permission...</Text>
@@ -361,7 +361,7 @@ const scan = () => {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.centerContent}>
             <MaterialCommunityIcons name="camera-off" size={64} color={colors.placeholder} />
             <Text style={[styles.permissionText, { fontFamily: fonts.medium, fontSize: 20 }]}>Camera permission is required</Text>
@@ -378,7 +378,7 @@ const scan = () => {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.cameraContainer}>
           {isScanning && (
             <>

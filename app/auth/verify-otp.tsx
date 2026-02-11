@@ -1,7 +1,7 @@
 // app/auth/verify-otp.tsx
 
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/context/AuthContext'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -11,9 +11,14 @@ import { StatusBar } from 'expo-status-bar'
 import { showSuccess, showError, showWarning } from '@/lib/toast'
 import { safeAsync } from '@/lib/errorHandler'
 
+const RESEND_COOLDOWN_SECONDS = 60
+
 const VerifyOTP = () => {
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resendSecondsLeft, setResendSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS)
+  const [resendLoading, setResendLoading] = useState(false)
+  const otpRefs = useRef<(TextInput | null)[]>([])
   const router = useRouter()
   const { login } = useAuth()
   const params = useLocalSearchParams()
@@ -21,6 +26,12 @@ const VerifyOTP = () => {
   const colors = useThemeColors()
   const fonts = useThemeFonts()
   const { isDark } = useTheme()
+
+  useEffect(() => {
+    if (resendSecondsLeft <= 0) return
+    const timer = setInterval(() => setResendSecondsLeft((s) => (s <= 0 ? 0 : s - 1)), 1000)
+    return () => clearInterval(timer)
+  }, [resendSecondsLeft])
 
   // Validate OTP format
   const validateOTP = (otpValue: string): boolean => {
@@ -48,6 +59,46 @@ const VerifyOTP = () => {
     }
     
     return true
+  }
+
+  const handleOtpChange = (index: number, value: string) => {
+    const num = value.replace(/[^0-9]/g, '')
+    if (num.length > 1) {
+      const pasted = num.slice(0, 6)
+      setOtp(pasted)
+      otpRefs.current[Math.min(pasted.length, 5)]?.focus()
+      return
+    }
+    const digit = num.slice(-1)
+    if (digit) {
+      const next = (otp.slice(0, index) + digit + otp.slice(index + 1)).slice(0, 6)
+      setOtp(next)
+      if (index < 5) otpRefs.current[index + 1]?.focus()
+    } else {
+      const next = otp.slice(0, index) + otp.slice(index + 1)
+      setOtp(next)
+      if (index > 0) otpRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handleOtpKeyPress = (index: number, key: string) => {
+    if (key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (!phone || resendSecondsLeft > 0 || resendLoading) return
+    setResendLoading(true)
+    try {
+      await authService.login(phone)
+      showSuccess('OTP Sent', 'A new code has been sent to your phone.')
+      setResendSecondsLeft(RESEND_COOLDOWN_SECONDS)
+    } catch {
+      showError('Resend Failed', 'Could not send OTP. Please try again.')
+    } finally {
+      setResendLoading(false)
+    }
   }
 
   const handleVerify = async () => {
@@ -260,7 +311,7 @@ const VerifyOTP = () => {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
         <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32 }]}>
           Verify OTP
         </Text>
@@ -269,7 +320,7 @@ const VerifyOTP = () => {
           { 
             color: colors.textSecondary, 
             fontSize: 14, 
-            marginBottom: 20,
+            marginBottom: 24,
             textAlign: 'center',
             fontFamily: fonts.regular 
           }
@@ -277,51 +328,41 @@ const VerifyOTP = () => {
           Enter the code sent to {phone ? `${phone.slice(0, 3)}****${phone.slice(-2)}` : 'your phone'}
         </Text>
 
-        <TextInput
-          placeholder="Enter 6-digit OTP"
-          placeholderTextColor={colors.placeholder}
-          value={otp}
-          onChangeText={(text) => {
-            // Only allow numbers and limit to 6 digits
-            const numericOnly = text.replace(/[^0-9]/g, '')
-            if (numericOnly.length <= 6) {
-              setOtp(numericOnly)
-            }
-          }}
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.input,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: 8,
-              padding: 12,
-              fontSize: 16,
-              color: colors.text,
-              fontFamily: fonts.regular,
-              textAlign: 'center',
-              letterSpacing: 8,
-            }
-          ]}
-          keyboardType="number-pad"
-          keyboardAppearance={isDark ? 'dark' : 'light'}
-          editable={!loading}
-          maxLength={6}
-          autoFocus
-        />
-        
-        {otp.length > 0 && otp.length < 6 && (
-          <Text style={{
-            color: colors.primary,
-            fontSize: 12,
-            marginTop: -15,
-            marginBottom: 10,
-            textAlign: 'center',
-            fontFamily: fonts.regular,
-          }}>
-            {6 - otp.length} more digit{6 - otp.length > 1 ? 's' : ''} needed
-          </Text>
-        )}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 24 }}>
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <TextInput
+              key={index}
+              ref={(r) => { otpRefs.current[index] = r }}
+              value={otp[index] ?? ''}
+              onChangeText={(text) => handleOtpChange(index, text)}
+              onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
+              placeholder=""
+              placeholderTextColor={colors.placeholder}
+              maxLength={6}
+              keyboardType="number-pad"
+              keyboardAppearance={isDark ? 'dark' : 'light'}
+              editable={!loading}
+              selectTextOnFocus
+              style={[
+                {
+                  width: 44,
+                  height: 52,
+                  backgroundColor: colors.input,
+                  borderWidth: 2,
+                  borderColor: otp[index] ? colors.primary : colors.border,
+                  borderRadius: 12,
+                  fontSize: 22,
+                  fontWeight: '600',
+                  color: colors.text,
+                  fontFamily: fonts.medium,
+                  textAlign: 'center',
+                  padding: 0,
+                }
+              ]}
+              {...(index === 0 ? { autoFocus: true } : {})}
+            />
+          ))}
+        </View>
         
         <TouchableOpacity
           style={[
@@ -355,6 +396,28 @@ const VerifyOTP = () => {
           )}
         </TouchableOpacity>
 
+        <View style={{ marginTop: 16, alignItems: 'center' }}>
+          {resendSecondsLeft > 0 ? (
+            <Text style={{ color: colors.placeholder, fontSize: 14, fontFamily: fonts.regular }}>
+              Resend OTP in 0:{String(resendSecondsLeft).padStart(2, '0')}
+            </Text>
+          ) : (
+            <TouchableOpacity
+              onPress={handleResendOtp}
+              disabled={resendLoading || loading}
+              style={{ paddingVertical: 12, paddingHorizontal: 24 }}
+            >
+              {resendLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={{ color: colors.primary, fontSize: 14, fontFamily: fonts.medium }}>
+                  Resend OTP
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
         <TouchableOpacity
           style={[
             {
@@ -364,7 +427,6 @@ const VerifyOTP = () => {
             }
           ]}
           onPress={() => {
-            // Navigate back to login page
             router.replace('/auth/login')
           }}
           disabled={loading}
