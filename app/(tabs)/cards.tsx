@@ -375,7 +375,7 @@ const cards = () => {
         style={{ flex: 1, justifyContent: "center", alignItems: "center", position: "relative", backgroundColor: colors.background }}
         edges={['top']}
       >
-        {/* Card Header - Left: up/down toggle, Middle: title, Right: edit */}
+        {/* Card Header - Left: settings, toggle, Middle: title, Right: edit */}
         <View style={[
           styles.cardHeader,
           {
@@ -384,25 +384,34 @@ const cards = () => {
             paddingRight: insets.right + 16,
           }
         ]}>
-          {/* Left: Card up/down toggle */}
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={toggleCardUpDown}
-            activeOpacity={0.7}
-          >
-            <Animated.View>
-              {(() => {
-                const isUp = translateY.value < -20
-                return (
-                  <MaterialCommunityIcons 
-                    name={isUp ? "chevron-down" : "chevron-up"} 
-                    size={24} 
-                    color={colors.text} 
-                  />
-                )
-              })()}
-            </Animated.View>
-          </TouchableOpacity>
+          {/* Left: Settings + Card up/down toggle */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.push('/settings')}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="settings" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={toggleCardUpDown}
+              activeOpacity={0.7}
+            >
+              <Animated.View>
+                {(() => {
+                  const isUp = translateY.value < -20
+                  return (
+                    <MaterialCommunityIcons 
+                      name={isUp ? "chevron-down" : "chevron-up"} 
+                      size={24} 
+                      color={colors.text} 
+                    />
+                  )
+                })()}
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
 
           {/* Middle: Card title */}
           <View style={styles.headerTitleContainer}>
@@ -426,23 +435,6 @@ const cards = () => {
           ) : (
             <View style={styles.headerIconButton} />
           )}
-        </View>
-
-        {/* Settings Button - Positioned with safe area insets */}
-        <View style={[
-          styles.header,
-          {
-            top: insets.top + (Platform.OS === 'ios' ? 8 : 12) - (SCREEN_HEIGHT * 0.02),
-            right: insets.right + 4,
-          }
-        ]}>
-          <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => router.push('/settings')}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="settings" size={24} color={colors.text} />
-          </TouchableOpacity>
         </View>
         
         <View style={{ justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>

@@ -8,10 +8,18 @@ import * as Location from 'expo-location'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import React, { useState } from 'react'
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { moderateScale, verticalScale } from 'react-native-size-matters'
+import { widthPercentageToDP as wp } from 'react-native-responsive-screen'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const MS = moderateScale
+const VS = verticalScale
+const ICON_HEADER = MS(24)
+const ICON_MD = MS(64)
 
 const scan = () => {
+  const insets = useSafeAreaInsets()
   const [permission, requestPermission] = useCameraPermissions()
   const [scanned, setScanned] = useState(false)
   const [isScanning, setIsScanning] = useState(true)
@@ -224,6 +232,7 @@ const scan = () => {
     },
     cameraContainer: {
       flex: 1,
+      backgroundColor: colors.background,
     },
     camera: {
       flex: 1,
@@ -239,16 +248,16 @@ const scan = () => {
       alignItems: 'center',
     },
     scanArea: {
-      width: 250,
-      height: 250,
+      width: Math.min(wp(70), MS(280)),
+      height: Math.min(wp(70), MS(280)),
       position: 'relative',
     },
     corner: {
       position: 'absolute',
-      width: 30,
-      height: 30,
+      width: MS(30),
+      height: MS(30),
       borderColor: colors.primary,
-      borderWidth: 3,
+      borderWidth: MS(3),
     },
     topLeft: {
       top: 0,
@@ -275,46 +284,46 @@ const scan = () => {
       borderTopWidth: 0,
     },
     instructionText: {
-      fontSize: 16,
-      marginTop: 30,
+      fontSize: MS(16),
+      marginTop: VS(30),
       textAlign: 'center',
-      padding: 10,
-      borderRadius: 8,
+      padding: MS(10),
+      borderRadius: MS(8),
     },
     centerContent: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 20,
+      padding: MS(20),
       backgroundColor: colors.background,
     },
     loadingText: {
-      marginTop: 10,
-      fontSize: 16,
+      marginTop: VS(10),
+      fontSize: MS(16),
       color: colors.placeholder,
     },
     permissionText: {
-      fontSize: 20,
+      fontSize: MS(20),
       fontWeight: 'bold',
       color: colors.text,
-      marginTop: 20,
+      marginTop: VS(20),
       textAlign: 'center',
     },
     permissionSubText: {
-      fontSize: 14,
+      fontSize: MS(14),
       color: colors.placeholder,
-      marginTop: 10,
+      marginTop: VS(10),
       textAlign: 'center',
-      marginBottom: 30,
+      marginBottom: VS(30),
     },
     permissionButton: {
       backgroundColor: colors.primary,
-      paddingHorizontal: 30,
-      paddingVertical: 12,
-      borderRadius: 8,
+      paddingHorizontal: MS(30),
+      paddingVertical: MS(12),
+      borderRadius: MS(8),
     },
     permissionButtonText: {
-      fontSize: 16,
+      fontSize: MS(16),
       fontWeight: '600',
     },
     scannedContainer: {
@@ -322,35 +331,73 @@ const scan = () => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.background,
+      padding: MS(20),
     },
     scannedText: {
-      fontSize: 24,
+      fontSize: MS(24),
       fontWeight: 'bold',
       color: colors.text,
-      marginTop: 20,
+      marginTop: VS(20),
     },
     scanAgainButton: {
       backgroundColor: colors.primary,
-      paddingHorizontal: 30,
-      paddingVertical: 12,
-      borderRadius: 8,
-      marginTop: 30,
+      paddingHorizontal: MS(30),
+      paddingVertical: MS(12),
+      borderRadius: MS(8),
+      marginTop: VS(30),
     },
     scanAgainButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
+      color: colors.buttonPrimaryText,
+      fontSize: MS(16),
       fontWeight: '600',
     },
+    backButton: {
+      position: 'absolute',
+      zIndex: 20,
+      width: MS(44),
+      height: MS(44),
+      borderRadius: MS(22),
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: isDark ? colors.text : '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: MS(4),
+      elevation: 3,
+    },
   })
+
+  const backButtonTop = insets.top + (Platform.OS === 'ios' ? MS(8) : MS(12))
+  const backButtonLeft = insets.left + MS(16)
+
+  const renderBackButton = () => (
+    <TouchableOpacity
+      style={[
+        styles.backButton,
+        {
+          top: backButtonTop,
+          left: backButtonLeft,
+        },
+      ]}
+      onPress={() => router.back()}
+      activeOpacity={0.7}
+    >
+      <MaterialCommunityIcons name="arrow-left" size={ICON_HEADER} color={colors.text} />
+    </TouchableOpacity>
+  )
 
   if (!permission) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
+          {renderBackButton()}
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { fontFamily: fonts.regular, fontSize: 16 }]}>Requesting camera permission...</Text>
+            <Text style={[styles.loadingText, { fontFamily: fonts.regular, fontSize: MS(16) }]}>Requesting camera permission...</Text>
           </View>
         </SafeAreaView>
       </View>
@@ -362,12 +409,13 @@ const scan = () => {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
+          {renderBackButton()}
           <View style={styles.centerContent}>
-            <MaterialCommunityIcons name="camera-off" size={64} color={colors.placeholder} />
-            <Text style={[styles.permissionText, { fontFamily: fonts.medium, fontSize: 20 }]}>Camera permission is required</Text>
-            <Text style={[styles.permissionSubText, { fontFamily: fonts.regular, fontSize: 14 }]}>Please allow camera access to scan QR codes</Text>
+            <MaterialCommunityIcons name="camera-off" size={ICON_MD} color={colors.placeholder} />
+            <Text style={[styles.permissionText, { fontFamily: fonts.medium, fontSize: MS(20) }]}>Camera permission is required</Text>
+            <Text style={[styles.permissionSubText, { fontFamily: fonts.regular, fontSize: MS(14) }]}>Please allow camera access to scan QR codes</Text>
             <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-              <Text style={[styles.permissionButtonText, { fontFamily: fonts.medium, fontSize: 16, color: colors.buttonPrimaryText }]}>Grant Permission</Text>
+              <Text style={[styles.permissionButtonText, { fontFamily: fonts.medium, fontSize: MS(16), color: colors.buttonPrimaryText }]}>Grant Permission</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -379,6 +427,8 @@ const scan = () => {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom', 'left', 'right']}>
+        {renderBackButton()}
+
         <View style={styles.cameraContainer}>
           {isScanning && (
             <>
@@ -399,9 +449,9 @@ const scan = () => {
                 </View>
                 <Text style={[styles.instructionText, { 
                   fontFamily: fonts.regular, 
-                  fontSize: 16,
-                  color: colors.buttonPrimaryText,
-                  backgroundColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.6)'
+                  fontSize: MS(16),
+                  color: isDark ? colors.text : colors.buttonPrimaryText,
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
                 }]}>
                   Position QR code within the frame
                 </Text>
@@ -411,10 +461,10 @@ const scan = () => {
           
           {!isScanning && (
             <View style={styles.scannedContainer}>
-              <MaterialCommunityIcons name="check-circle" size={64} color={colors.primary} />
-              <Text style={[styles.scannedText, { fontFamily: fonts.bold, fontSize: 32 }]}>QR Code Scanned!</Text>
+              <MaterialCommunityIcons name="check-circle" size={ICON_MD} color={colors.primary} />
+              <Text style={[styles.scannedText, { fontFamily: fonts.bold, fontSize: MS(24) }]}>QR Code Scanned!</Text>
               <TouchableOpacity style={styles.scanAgainButton} onPress={resetScanner}>
-                <Text style={[styles.scanAgainButtonText, { fontFamily: fonts.medium, fontSize: 16, color: colors.buttonPrimaryText }]}>Scan Again</Text>
+                <Text style={[styles.scanAgainButtonText, { fontFamily: fonts.medium, fontSize: MS(16), color: colors.buttonPrimaryText }]}>Scan Again</Text>
               </TouchableOpacity>
             </View>
           )}
