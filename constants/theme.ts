@@ -51,7 +51,7 @@ export const LightColors = {
   brand: '#C94DB2',
 
   background: '#FFFFFF',
-  backgroundSecondary: '#F5F5F5',
+  backgroundSecondary: '#ffffff',
   text: '#000000',
 
   border: '#E5E7EB',
@@ -82,7 +82,7 @@ export const DarkColors = {
   brand: '#C94DB2',
 
   background: '#000000',
-  backgroundSecondary: '#111111',
+  backgroundSecondary: '#000000',
   text: '#FFFFFF',
 
   border: '#374151',

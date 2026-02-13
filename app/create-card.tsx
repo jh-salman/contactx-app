@@ -345,7 +345,7 @@ const CreateCard = () => {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.background,
     },
     header: {
       flexDirection: 'row',
@@ -353,7 +353,7 @@ const CreateCard = () => {
       alignItems: 'center',
       paddingVertical: MS(8),
       paddingHorizontal: MS(16),
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -384,7 +384,7 @@ const CreateCard = () => {
     section: {
       width: wp('100%'),
       alignSelf: 'center',
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       borderRadius: MS(12),
       paddingHorizontal: MS(12),
       paddingVertical: MS(2),
@@ -415,7 +415,7 @@ const CreateCard = () => {
       fontSize: MS(16),
       minHeight: MS(48),
       color: colors.inputText,
-      backgroundColor: colors.inputBackground,
+      backgroundColor: colors.background,
     },
     personalDetailInput: {
       borderWidth: 1,
@@ -426,7 +426,7 @@ const CreateCard = () => {
       fontSize: MS(16),
       minHeight: MS(52),
       color: colors.inputText,
-      backgroundColor: colors.inputBackground,
+      backgroundColor: colors.background,
     },
     personalDetailChipsRow: {
       flexDirection: 'row',
@@ -443,7 +443,7 @@ const CreateCard = () => {
       borderRadius: MS(25),
       borderWidth: 0.5,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       
     },
     colorOptions: {
@@ -514,7 +514,7 @@ const CreateCard = () => {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: MS(12),
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.background,
       borderRadius: MS(8),
       marginBottom: MS(8),
     },
@@ -555,7 +555,7 @@ const CreateCard = () => {
       paddingHorizontal: MS(12),
       paddingVertical: MS(6),
       borderRadius: MS(6),
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -576,7 +576,7 @@ const CreateCard = () => {
       alignItems: 'center',
       justifyContent: 'center',
       padding: MS(12),
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.background,
       borderRadius: MS(8),
       gap: MS(8),
     },
@@ -594,7 +594,7 @@ const CreateCard = () => {
       marginBottom: MS(12),
       borderWidth: 1,
       borderColor: colors.borderLight,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.background,
     },
     imagePreview: {
       width: '100%',
@@ -676,7 +676,7 @@ const CreateCard = () => {
       height: MS(64),
       borderRadius: MS(32),
       borderWidth: 2,
-      borderColor: colors.card,
+      borderColor: colors.border,
       overflow: 'hidden',
     },
     cardPreviewLogoWrap: {
@@ -687,16 +687,16 @@ const CreateCard = () => {
       height: MS(40),
       borderRadius: MS(8),
       borderWidth: 2,
-      borderColor: colors.card,
+      borderColor: colors.border,
       overflow: 'hidden',
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
     },
     cardPreviewEditBtn: {
       position: 'absolute',
       width: MS(28),
       height: MS(28),
       borderRadius: MS(14),
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       justifyContent: 'center',
       alignItems: 'center',
       // borderWidth: 1,
@@ -726,7 +726,7 @@ const CreateCard = () => {
       borderRadius: MS(8),
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.background,
       alignItems: 'center',
       marginTop: MS(14),
       marginBottom: MS(6),
@@ -770,7 +770,7 @@ const CreateCard = () => {
     },
     layoutSkeletonCover: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: colors.placeholder + '40',
+      backgroundColor: colors.background,
       borderRadius: MS(6),
     },
     layoutSkeletonProfileCircle: {
@@ -778,27 +778,27 @@ const CreateCard = () => {
       width: MS(28),
       height: MS(28),
       borderRadius: MS(14),
-      backgroundColor: colors.textSecondary + '80',
+      backgroundColor: colors.background,
       borderWidth: 1,
-      borderColor: colors.card,
+      borderColor: colors.border,
     },
     layoutSkeletonLogoRect: {
       position: 'absolute',
       width: MS(32),
       height: MS(22),
       borderRadius: MS(4),
-      backgroundColor: colors.textSecondary + '80',
+      backgroundColor: colors.background,
       borderWidth: 1,
-      borderColor: colors.card,
+      borderColor: colors.border,
     },
     layoutSkeletonLogoCircle: {
       position: 'absolute',
       width: MS(24),
       height: MS(24),
       borderRadius: MS(12),
-      backgroundColor: colors.textSecondary + '80',
+      backgroundColor: colors.background,
       borderWidth: 1,
-      borderColor: colors.card,
+      borderColor: colors.border,
     },
     layoutSkeletonLabel: {
       fontSize: MS(10),
@@ -1244,7 +1244,7 @@ const CreateCard = () => {
                           />
                         </View>
                       ) : (
-                        <View style={[styles.modalPreviewPlaceholder, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <View style={[styles.modalPreviewPlaceholder, { backgroundColor: colors.background, borderColor: colors.border }]}>
                           <MaterialCommunityIcons name="image-plus" size={ICON_MD} color={colors.placeholder} />
                           <Text style={[styles.modalPreviewPlaceholderText, { fontFamily: fonts.medium, color: colors.placeholder }]}>No image</Text>
                         </View>
@@ -1254,7 +1254,7 @@ const CreateCard = () => {
                     {/* Buttons — no brand color; modern neutral look */}
                     <View style={styles.modalBottomActions}>
                       <TouchableOpacity
-                        style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.card }]}
+                        style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.background }]}
                         onPress={() => pickFromCamera(imageModalType)}
                         disabled={loading}
                       >
@@ -1262,7 +1262,7 @@ const CreateCard = () => {
                         <Text style={[styles.modalActionText, { fontFamily: fonts.medium, color: colors.text }]}>From camera</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.card }]}
+                        style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.background }]}
                         onPress={() => pickFromGallery(imageModalType)}
                         disabled={loading}
                       >
@@ -1272,7 +1272,7 @@ const CreateCard = () => {
                       {formData[imageModalType] ? (
                         <>
                           <TouchableOpacity
-                            style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.card }]}
+                            style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.background }]}
                             onPress={async () => {
                               await pickFromGallery(imageModalType)
                             }}
@@ -1282,7 +1282,7 @@ const CreateCard = () => {
                             <Text style={[styles.modalActionText, { fontFamily: fonts.medium, color: colors.text }]}>Replace</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.card }]}
+                            style={[styles.modalActionButton, { borderColor: colors.border, backgroundColor: colors.background }]}
                             onPress={() => {
                               setFormData(prev => {
                                 const next = { ...prev, [imageModalType]: '' }
@@ -1372,13 +1372,13 @@ const CreateCard = () => {
                       switch (opt.id) {
                         case 'layout1':
                           return (
-                            <View style={[styles.layoutSkeletonPreview, { backgroundColor: colors.placeholder + '30', justifyContent: 'center', alignItems: 'center' }]}>
+                            <View style={[styles.layoutSkeletonPreview, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
                               <View style={[styles.layoutSkeletonProfileCircle, { position: 'relative', left: undefined, bottom: undefined }]} />
                             </View>
                           )
                         case 'layout2':
                           return (
-                            <View style={[styles.layoutSkeletonPreview, { backgroundColor: colors.placeholder + '30', justifyContent: 'center', alignItems: 'center' }]}>
+                            <View style={[styles.layoutSkeletonPreview, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
                               <View style={[styles.layoutSkeletonLogoRect, { position: 'relative', right: undefined, bottom: undefined, width: MS(36), height: MS(24) }]} />
                             </View>
                           )
@@ -1390,7 +1390,7 @@ const CreateCard = () => {
                           )
                         case 'layout4':
                           return (
-                            <View style={[styles.layoutSkeletonPreview, { backgroundColor: colors.placeholder + '30' }]}>
+                            <View style={[styles.layoutSkeletonPreview, { backgroundColor: colors.background }]}>
                               {logoCircle}
                             </View>
                           )
@@ -1425,8 +1425,8 @@ const CreateCard = () => {
                         key={opt.id}
                         style={[
                           styles.layoutSkeletonCard,
-                          { borderColor: colors.border, backgroundColor: colors.card },
-                          selected && { borderColor: colors.brand, backgroundColor: colors.backgroundSecondary },
+                          { borderColor: colors.border, backgroundColor: colors.background },
+                          selected && { borderColor: colors.brand, backgroundColor: colors.background },
                         ]}
                         onPress={() => {
                           try {
@@ -1582,7 +1582,7 @@ const CreateCard = () => {
               <View style={styles.personalDetailChipsRow}>
                 {!personalDetailExpanded.middleName && (
                   <TouchableOpacity
-                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={() => setPersonalDetailExpanded((p) => ({ ...p, middleName: true }))}
                     activeOpacity={0.7}
                   >
@@ -1591,7 +1591,7 @@ const CreateCard = () => {
                 )}
                 {!personalDetailExpanded.prefix && (
                   <TouchableOpacity
-                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={() => setPersonalDetailExpanded((p) => ({ ...p, prefix: true }))}
                     activeOpacity={0.7}
                   >
@@ -1602,7 +1602,7 @@ const CreateCard = () => {
               <View style={styles.personalDetailChipsRow}>
                 {!personalDetailExpanded.suffix && (
                   <TouchableOpacity
-                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={() => setPersonalDetailExpanded((p) => ({ ...p, suffix: true }))}
                     activeOpacity={0.7}
                   >
@@ -1611,7 +1611,7 @@ const CreateCard = () => {
                 )}
                 {!personalDetailExpanded.pronoun && (
                   <TouchableOpacity
-                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={() => setPersonalDetailExpanded((p) => ({ ...p, pronoun: true }))}
                     activeOpacity={0.7}
                   >
@@ -1622,7 +1622,7 @@ const CreateCard = () => {
               <View style={styles.personalDetailChipsRow}>
                 {!personalDetailExpanded.preferred && (
                   <TouchableOpacity
-                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={() => setPersonalDetailExpanded((p) => ({ ...p, preferred: true }))}
                     activeOpacity={0.7}
                   >
@@ -1631,7 +1631,7 @@ const CreateCard = () => {
                 )}
                 {!personalDetailExpanded.maidenName && (
                   <TouchableOpacity
-                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[styles.personalDetailChip, { borderColor: colors.border, backgroundColor: colors.background }]}
                     onPress={() => setPersonalDetailExpanded((p) => ({ ...p, maidenName: true }))}
                     activeOpacity={0.7}
                   >

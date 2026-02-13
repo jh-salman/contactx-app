@@ -11,7 +11,11 @@ import {
   View,
   ViewStyle,
 } from 'react-native'
+import { moderateScale, verticalScale } from 'react-native-size-matters'
 import { useThemeColors } from '@/context/ThemeContext'
+
+const MS = moderateScale
+const VS = verticalScale
 
 type Props = {
   label: string
@@ -78,7 +82,7 @@ export function FloatingOutlinedInput({
   const labelStyle = useMemo(() => {
     const translateY = float.interpolate({
       inputRange: [0, 1],
-      outputRange: [0, -26],
+      outputRange: [0, -VS(26)],
     })
     const scale = float.interpolate({
       inputRange: [0, 1],
@@ -133,7 +137,7 @@ export function FloatingOutlinedInput({
           multiline={multiline}
           style={[
             styles.input,
-            { color: colors.text, paddingRight: rightIcon ? 44 : 14 },
+            { color: colors.text, paddingRight: rightIcon ? MS(44) : MS(14) },
             multiline && styles.inputMultiline,
             inputStyle,
           ]}
@@ -144,7 +148,7 @@ export function FloatingOutlinedInput({
         {rightIcon && (!showRightIconOnlyWhenFocused || focused) ? (
           <Pressable
             onPress={disabled ? undefined : onPressRightIcon}
-            hitSlop={10}
+            hitSlop={MS(10)}
             style={styles.rightIconBtn}
           >
             {rightIcon}
@@ -162,50 +166,50 @@ export function FloatingOutlinedInput({
 const styles = StyleSheet.create({
   wrap: { width: '100%' },
   box: {
-    borderRadius: 14,
-    minHeight: 56,
+    borderRadius: MS(14),
+    minHeight: MS(56),
     justifyContent: 'center',
     overflow: 'visible',
   },
   boxMultiline: {
-    minHeight: 56,
+    minHeight: MS(56),
     alignItems: 'flex-start',
   },
   labelWrap: {
     position: 'absolute',
-    left: 14,
-    top: 14,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    left: MS(14),
+    top: MS(14),
+    paddingHorizontal: MS(8),
+    paddingVertical: VS(2),
+    borderRadius: MS(6),
   },
   labelText: {
-    fontSize: 14,
+    fontSize: MS(14),
     fontWeight: '600',
   },
   input: {
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    minHeight: 24,
+    fontSize: MS(16),
+    paddingHorizontal: MS(14),
+    paddingVertical: MS(14),
+    minHeight: MS(24),
   },
   inputMultiline: {
-    minHeight: 24,
-    paddingTop: 20,
-    paddingBottom: 14,
+    minHeight: MS(24),
+    paddingTop: VS(20),
+    paddingBottom: MS(14),
   },
   rightIconBtn: {
     position: 'absolute',
-    right: 10,
+    right: MS(10),
     top: 0,
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 40,
+    width: MS(40),
   },
   errorText: {
-    marginTop: 6,
-    fontSize: 12,
+    marginTop: VS(6),
+    fontSize: MS(12),
     fontWeight: '500',
   },
 })
