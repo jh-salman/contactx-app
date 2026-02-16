@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: '100%',
     borderRadius: MS(12),
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   coverImage: {
     ...StyleSheet.absoluteFillObject,

@@ -447,6 +447,7 @@ const CardItem = ({
                         {
                             backgroundColor: colors.input,
                             shadowColor: isDark ? '#000000' : '#000000',
+                            overflow: 'hidden',
                         },
                     ]}
                 >
@@ -457,7 +458,7 @@ const CardItem = ({
                             {
                                 backgroundColor: originalCardBgColor,
                                 height: width * 0.55,
-                                overflow: 'visible',
+                                overflow: ['layout5', 'layout6', 'layout7'].includes(imageLayout || '') ? 'visible' : 'hidden',
                             },
                         ]}
                     >
@@ -493,13 +494,14 @@ const CardItem = ({
                         </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Body - same design as CardPreviewModal */}
+                    {/* Body - gap between image layout and personal info; extra space when layout overflows (5,6,7) */}
                     <Animated.View
                         style={[
                             styles.cardDesignContent,
                             rnContentStyle,
+                            { paddingTop: 20 },
                             ['layout5', 'layout6', 'layout7'].includes(imageLayout || '') && {
-                                paddingTop: 28,
+                                paddingTop: 48,
                             },
                         ]}
                     >
