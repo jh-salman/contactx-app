@@ -1,5 +1,5 @@
-import { StyleSheet, View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Text, Image, Modal, Pressable, Dimensions } from 'react-native'
-import React, { useState } from 'react'
+import { StyleSheet, View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Text, Image, Modal, Pressable, Dimensions, useWindowDimensions } from 'react-native'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { apiService } from '@/services/apiService'
@@ -10,6 +10,8 @@ import { StatusBar } from 'expo-status-bar'
 import * as ImagePicker from 'expo-image-picker'
 import { convertImageToBase64 } from '@/utils/imageUtils'
 import { uploadImageToCloudinary } from '@/services/imageUploadService'
+import { CardImageLayout } from '@/components/card/CardImageLayout'
+import { CardPreviewModal } from '@/components/CardPreviewModal'
 import { SalonXLogo } from '@/components/SalonXLogo'
 import { UploadLoadingOverlay } from '@/components/UploadLoadingOverlay'
 import { FloatingOutlinedInput } from '@/components/FloatingOutlinedInput'
@@ -22,29 +24,70 @@ const ICON_HEADER = MS(24)
 const ICON_SM = MS(20)
 const ICON_MD = MS(48)
 
-const CreateCard = () => {
+import type { InputRestrict } from '@/components/FloatingOutlinedInput'
+
+type KeyboardType = 'url' | 'email-address' | 'phone-pad' | 'default'
+const SOCIAL_MEDIA_OPTIONS: { type: string; label: string; icon: string; inputLabel: string; placeholder: string; keyboardType: KeyboardType; restrictInput: InputRestrict }[] = [
+  { type: 'phone', label: 'Phone', icon: 'phone', inputLabel: 'Phone number', placeholder: 'Enter phone number', keyboardType: 'phone-pad', restrictInput: 'numeric' },
+  { type: 'email', label: 'Email', icon: 'email', inputLabel: 'Email address', placeholder: 'Enter email address', keyboardType: 'email-address', restrictInput: 'email' },
+  { type: 'link', label: 'Link', icon: 'link-variant', inputLabel: 'URL or link', placeholder: 'Enter URL', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'address', label: 'Address', icon: 'map-marker', inputLabel: 'Address', placeholder: 'Enter full address', keyboardType: 'default', restrictInput: 'none' },
+  { type: 'website', label: 'Company Website', icon: 'web', inputLabel: 'Website URL', placeholder: 'https://example.com', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'linkedin', label: 'LinkedIn', icon: 'linkedin', inputLabel: 'LinkedIn profile URL', placeholder: 'linkedin.com/in/username', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'instagram', label: 'Instagram', icon: 'instagram', inputLabel: 'Instagram username', placeholder: '@username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'calendly', label: 'Calendly', icon: 'calendar-month', inputLabel: 'Calendly link', placeholder: 'calendly.com/your-link', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'x', label: 'X', icon: 'twitter', inputLabel: 'X profile URL', placeholder: 'x.com/username', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'facebook', label: 'Facebook', icon: 'facebook', inputLabel: 'Facebook profile URL', placeholder: 'facebook.com/username', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'threads', label: 'Threads', icon: 'at', inputLabel: 'Threads username', placeholder: '@username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'snapchat', label: 'Snapchat', icon: 'ghost', inputLabel: 'Snapchat username', placeholder: 'username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'tiktok', label: 'Tiktok', icon: 'music', inputLabel: 'TikTok username', placeholder: '@username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'youtube', label: 'YouTube', icon: 'youtube', inputLabel: 'YouTube channel URL', placeholder: 'youtube.com/@channel', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'github', label: 'Github', icon: 'github', inputLabel: 'GitHub profile URL', placeholder: 'github.com/username', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'yelp', label: 'Yelp', icon: 'store', inputLabel: 'Yelp business URL', placeholder: 'yelp.com/biz/...', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'venmo', label: 'Venmo', icon: 'cash', inputLabel: 'Venmo username', placeholder: '@username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'paypal', label: 'Paypal', icon: 'credit-card-outline', inputLabel: 'PayPal email or link', placeholder: 'Enter PayPal info', keyboardType: 'email-address', restrictInput: 'email' },
+  { type: 'cashapp', label: 'CashApp', icon: 'currency-usd', inputLabel: 'Cash App $Cashtag', placeholder: '$username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'discord', label: 'Discord', icon: 'controller-classic', inputLabel: 'Discord username', placeholder: 'username#1234', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'signal', label: 'Signal', icon: 'message-text', inputLabel: 'Signal phone number', placeholder: 'Enter phone number', keyboardType: 'phone-pad', restrictInput: 'numeric' },
+  { type: 'skype', label: 'Skype', icon: 'phone-outline', inputLabel: 'Skype username', placeholder: 'live:username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'telegram', label: 'Telegram', icon: 'send', inputLabel: 'Telegram username', placeholder: '@username', keyboardType: 'default', restrictInput: 'alphanumeric' },
+  { type: 'twitch', label: 'Twitch', icon: 'video', inputLabel: 'Twitch channel URL', placeholder: 'twitch.tv/username', keyboardType: 'url', restrictInput: 'url' },
+  { type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', inputLabel: 'WhatsApp number', placeholder: '+1234567890', keyboardType: 'phone-pad', restrictInput: 'numeric' },
+]
+
+type CreateCardProps = { cardId?: string }
+
+const CreateCard = ({ cardId }: CreateCardProps) => {
   const router = useRouter()
   const colors = useThemeColors()
   const fonts = useThemeFonts()
   const { isDark } = useTheme()
+  const isEditMode = !!cardId
   const insets = useSafeAreaInsets()
+  const { width: windowWidth } = useWindowDimensions()
+  const socialGridGap = MS(12)
+  const socialGridPadding = MS(16)
+  const socialMediaItemWidth = Math.floor((windowWidth - 2 * MS(12) - 2 * socialGridPadding - 2 * socialGridGap) / 3)
   const modalPadding = { top: Math.max(insets.top, 44), bottom: Math.max(insets.bottom, 20), left: Math.max(insets.left, 0), right: Math.max(insets.right, 0) }
   const [loading, setLoading] = useState(false)
+  const [fetchingCard, setFetchingCard] = useState(isEditMode)
   type ImageLayoutId = 'layout1' | 'layout2' | 'layout3' | 'layout4' | 'layout5' | 'layout6' | 'layout7'
   type ImageFieldType = 'profile' | 'logo' | 'cover'
+  const defaultCardColor = isDark ? '#FFFFFF' : '#000000'
   const [formData, setFormData] = useState({
     cardTitle: 'ContactX',
     firstName: '',
     lastName: '',
     jobTitle: '',
+    company: '',
     phoneNumber: '',
     email: '',
-    cardColor: '#000000',
+    cardColor: defaultCardColor,
     logo: '',
     profile: '',
     cover: '',
     imageLayout: null as ImageLayoutId | null,
-    socialLinks: [] as Array<{ type: string; url: string }>,
+    socialLinks: [] as Array<{ type: string; url: string; label?: string }>,
     middleName: '',
     prefix: '',
     suffix: '',
@@ -74,6 +117,7 @@ const CreateCard = () => {
     layout7: ['cover', 'profile', 'logo'],
   }
   const [layoutModalVisible, setLayoutModalVisible] = useState(false)
+  const [cardPreviewVisible, setCardPreviewVisible] = useState(false)
   const [intendedLayout, setIntendedLayout] = useState<ImageLayoutId | null>(null)
   const [pendingUploadQueue, setPendingUploadQueue] = useState<ImageFieldType[]>([])
 
@@ -124,11 +168,80 @@ const CreateCard = () => {
     else setFormData(prev => ({ ...prev, imageLayout: null }))
   }
   
-  const [currentSocialLink, setCurrentSocialLink] = useState({
-    type: 'linkedin',
-    url: '',
-  })
   const [imageModalType, setImageModalType] = useState<ImageFieldType | null>(null)
+  const [socialLinkModalVisible, setSocialLinkModalVisible] = useState(false)
+  const [socialLinkModalType, setSocialLinkModalType] = useState('linkedin')
+  const [socialLinkModalUrl, setSocialLinkModalUrl] = useState('')
+  const [socialLinkModalLabel, setSocialLinkModalLabel] = useState('')
+
+  useEffect(() => {
+    const newDefault = isDark ? '#FFFFFF' : '#000000'
+    setFormData(prev => {
+      const oldDefault = !isDark ? '#FFFFFF' : '#000000'
+      if (prev.cardColor === oldDefault) return { ...prev, cardColor: newDefault }
+      return prev
+    })
+  }, [isDark])
+
+  useEffect(() => {
+    if (!cardId) return
+    const fetchCard = async () => {
+      try {
+        setFetchingCard(true)
+        const response = await apiService.getAllCards()
+        const cardsData = response.data || response.cards || response || []
+        const foundCard = Array.isArray(cardsData)
+          ? cardsData.find((c: any) => (c.id === cardId || c._id === cardId))
+          : null
+        if (foundCard) {
+          const pi = foundCard.personalInfo || foundCard.personal_info || {}
+          const linksRaw = Array.isArray(foundCard.socialLinks?.links)
+            ? foundCard.socialLinks.links
+            : Array.isArray(foundCard.socialLinks)
+              ? foundCard.socialLinks
+              : []
+          const links = linksRaw.map((l: any) => ({
+            type: l.type || l.platform || 'link',
+            url: l.url || '',
+            label: l.label || l.name,
+          }))
+          const layoutVal = foundCard.imageLayout
+            || foundCard.imagesAndLayouts?.layout
+            || (typeof foundCard.imagesAndLayouts === 'string' ? foundCard.imagesAndLayouts : null)
+          setFormData({
+            cardTitle: foundCard.cardTitle || 'ContactX',
+            firstName: pi.firstName ?? pi.first_name ?? '',
+            lastName: pi.lastName ?? pi.last_name ?? '',
+            jobTitle: pi.jobTitle ?? pi.job_title ?? '',
+            company: pi.company ?? '',
+            phoneNumber: pi.phoneNumber ?? pi.phone_number ?? '',
+            email: pi.email ?? '',
+            cardColor: foundCard.cardColor || defaultCardColor,
+            logo: foundCard.logo || '',
+            profile: foundCard.profile || '',
+            cover: foundCard.cover || '',
+            imageLayout: (layoutVal || null) as ImageLayoutId | null,
+            socialLinks: links,
+            middleName: pi.middleName ?? pi.middle_name ?? '',
+            prefix: pi.prefix ?? '',
+            suffix: pi.suffix ?? '',
+            pronoun: pi.pronoun ?? '',
+            preferred: pi.preferred ?? '',
+            maidenName: pi.maidenName ?? pi.maiden_name ?? '',
+          })
+        } else {
+          showError('Error', 'Card not found')
+          router.back()
+        }
+      } catch (e: any) {
+        showError('Error', e?.message ?? 'Failed to load card')
+        router.back()
+      } finally {
+        setFetchingCard(false)
+      }
+    }
+    fetchCard()
+  }, [cardId])
 
   const handleInputChange = (field: string, value: string) => {
     try {
@@ -138,34 +251,21 @@ const CreateCard = () => {
     }
   }
 
-  const validateForm = () => {
+  /** Validation for CREATE only. Schema: PersonalInfo.phoneNumber required. */
+  const validateFormForCreate = () => {
     try {
-      if (!formData.firstName?.trim()) {
-        showError('Validation', 'First name is required.')
-      return false
-    }
-      if (!formData.lastName?.trim()) {
-        showError('Validation', 'Last name is required.')
-      return false
-    }
-      if (!formData.jobTitle?.trim()) {
-        showError('Validation', 'Job title is required.')
-      return false
-    }
       if (!formData.phoneNumber?.trim()) {
         showError('Validation', 'Phone number is required.')
-      return false
-    }
-      if (!formData.email?.trim()) {
-        showError('Validation', 'Email is required.')
-      return false
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email.trim())) {
-        showError('Validation', 'Please enter a valid email address.')
-      return false
-    }
-    return true
+        return false
+      }
+      if (formData.email?.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email.trim())) {
+          showError('Validation', 'Please enter a valid email address.')
+          return false
+        }
+      }
+      return true
     } catch (e: any) {
       showError('Validation', e?.message ?? 'Invalid form.')
       return false
@@ -173,7 +273,8 @@ const CreateCard = () => {
   }
 
   const handleSubmit = async () => {
-    if (!validateForm()) return
+    // UPDATE: no validation. CREATE: validate per DB schema (phoneNumber required)
+    if (!isEditMode && !validateFormForCreate()) return
 
     try {
       setLoading(true)
@@ -186,14 +287,21 @@ const CreateCard = () => {
         logo: formData.logo.trim() || undefined,
         profile: formData.profile.trim() || undefined,
         cover: formData.cover.trim() || undefined,
-        imagesAndLayouts: null,
+        imagesAndLayouts: formData.imageLayout ? { layout: formData.imageLayout } : null,
         isFavorite: false,
         personalInfo: {
           firstName: formData.firstName.trim() || undefined,
           lastName: formData.lastName.trim() || undefined,
           jobTitle: formData.jobTitle.trim() || undefined,
+          company: formData.company?.trim() || undefined,
           phoneNumber: formData.phoneNumber.trim(), // Required
           email: formData.email.trim() || undefined,
+          middleName: formData.middleName?.trim() || undefined,
+          prefix: formData.prefix?.trim() || undefined,
+          suffix: formData.suffix?.trim() || undefined,
+          pronoun: formData.pronoun?.trim() || undefined,
+          preferred: formData.preferred?.trim() || undefined,
+          maidenName: formData.maidenName?.trim() || undefined,
         },
         socialLinks: formData.socialLinks.length > 0 
           ? { links: formData.socialLinks }
@@ -202,28 +310,61 @@ const CreateCard = () => {
         qrImage: undefined,
       }
 
-      await apiService.createCard(cardData)
-      showSuccess('Card saved', 'Card created successfully.')
-            router.push({
-              pathname: '/(tabs)/cards',
-              params: { refresh: 'true' }
-            })
+      if (isEditMode && cardId) {
+        await apiService.updateCard(cardId, {
+          cardTitle: cardData.cardTitle,
+          cardColor: cardData.cardColor,
+          logo: cardData.logo || null,
+          profile: cardData.profile || null,
+          cover: cardData.cover || null,
+          imagesAndLayouts: cardData.imagesAndLayouts,
+          personalInfo: cardData.personalInfo,
+          socialLinks: cardData.socialLinks,
+        })
+        showSuccess('Card updated', 'Card updated successfully.')
+      } else {
+        await apiService.createCard(cardData)
+        showSuccess('Card saved', 'Card created successfully.')
+      }
+      router.push({
+        pathname: '/(tabs)/cards',
+        params: { refresh: 'true' }
+      })
     } catch (error: any) {
-      const message = error?.response?.data?.message ?? error?.message ?? 'Failed to create card'
+      const message = error?.response?.data?.message ?? error?.message ?? (isEditMode ? 'Failed to update card' : 'Failed to create card')
       showError('Error', message)
     } finally {
       setLoading(false)
     }
   }
 
-  const addSocialLink = () => {
-    if (currentSocialLink.url.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        socialLinks: [...prev.socialLinks, { ...currentSocialLink }]
-      }))
-      setCurrentSocialLink({ type: 'linkedin', url: '' })
+  const openSocialLinkModal = (type: string) => {
+    setSocialLinkModalType(type)
+    setSocialLinkModalUrl('')
+    setSocialLinkModalLabel('')
+    setSocialLinkModalVisible(true)
+  }
+
+  const closeSocialLinkModal = () => {
+    setSocialLinkModalVisible(false)
+    setSocialLinkModalUrl('')
+    setSocialLinkModalLabel('')
+  }
+
+  const saveSocialLink = () => {
+    if (!socialLinkModalUrl.trim()) {
+      showError('Validation', 'Please enter a URL or link.')
+      return
     }
+    setFormData(prev => ({
+      ...prev,
+      socialLinks: [...prev.socialLinks, {
+        type: socialLinkModalType,
+        url: socialLinkModalUrl.trim(),
+        label: socialLinkModalLabel.trim() || undefined,
+      }]
+    }))
+    closeSocialLinkModal()
   }
 
   const removeSocialLink = (index: number) => {
@@ -331,9 +472,16 @@ const CreateCard = () => {
     await pickFromGallery(field)
   }
 
+  const getSocialIconColor = (bgColor: string) => {
+    if (bgColor === '#FFFFFF') return '#000000'
+    if (bgColor === '#000000') return '#FFFFFF'
+    return colors.primary
+  }
+
   const cardColors = [
-    { name: 'Green', value: '#08CB00' },
+    { name: 'White', value: '#FFFFFF' },
     { name: 'Black', value: '#000000' },
+    { name: 'Green', value: '#08CB00' },
     { name: 'Cyan', value: '#00F7FF' },
     { name: 'Pink', value: '#FF7DB0' },
     { name: 'Orange', value: '#FFA239' },
@@ -518,6 +666,23 @@ const CreateCard = () => {
       borderRadius: MS(8),
       marginBottom: MS(8),
     },
+    socialLinkRowWithIcon: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: MS(12),
+      paddingHorizontal: MS(4),
+      marginBottom: MS(8),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    socialLinkIconCircle: {
+      width: MS(40),
+      height: MS(40),
+      borderRadius: MS(20),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: MS(12),
+    },
     socialLinkInfo: {
       flex: 1,
       marginRight: MS(12),
@@ -584,6 +749,50 @@ const CreateCard = () => {
       color: colors.primary,
       fontSize: MS(14),
       fontWeight: '600',
+    },
+    tapToAddPrompt: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: MS(12),
+      marginBottom: MS(8),
+    },
+    tapToAddText: {
+    },
+    tapToAddPlusCircle: {
+      width: MS(28),
+      height: MS(28),
+      borderRadius: MS(14),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    socialMediaSection: {
+      borderWidth: 0,
+      borderRadius: MS(12),
+      padding: MS(16),
+      marginTop: MS(4),
+    },
+    socialMediaGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: MS(12),
+      marginTop: MS(8),
+    },
+    socialMediaIconItem: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: MS(8),
+    },
+    socialMediaIconCircle: {
+      width: MS(48),
+      height: MS(48),
+      borderRadius: MS(24),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    socialMediaIconLabel: {
+      marginTop: MS(6),
+      textAlign: 'center',
     },
     imagePreviewContainer: {
       position: 'relative',
@@ -819,6 +1028,28 @@ const CreateCard = () => {
     modalTitle: {
       fontSize: MS(18),
     },
+    socialLinkModalHeader: {
+      paddingHorizontal: MS(16),
+    },
+    modalSaveButton: {
+    },
+    labelSuggestions: {
+      marginTop: MS(8),
+      marginBottom: MS(8),
+    },
+    labelSuggestionsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: MS(12),
+    },
+    labelSuggestionChip: {
+      paddingVertical: MS(10),
+      paddingHorizontal: MS(20),
+      borderRadius: MS(25),
+      borderWidth: 1,
+    },
+    labelSuggestionText: {
+    },
     modalPreviewWrap: {
       flex: 1,
       padding: MS(16),
@@ -887,6 +1118,15 @@ const CreateCard = () => {
     },
   })
 
+  if (fetchingCard) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    )
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -941,223 +1181,25 @@ const CreateCard = () => {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { fontFamily: fonts.medium, fontSize: MS(18), color: colors.text }]}>Images & layout</Text>
 
-            {/* Card preview: no layout = latest uploaded in cover; else render by layout1–5 */}
-            {(() => {
-              const layout = formData.imageLayout
-              const hasAnyImage = !!(formData.cover || formData.profile || formData.logo)
-              const isTallLayout = ['layout1', 'layout2', 'layout3', 'layout4'].includes(layout || '')
-              const height = hasAnyImage ? (isTallLayout ? VS(169) : VS(135)) : VS(60)
-              const isPlaceholderOnly = !formData.cover && !formData.profile && !formData.logo
-              const profileCircleSize = MS(96)
-              const profileCircleRadius = MS(48)
-              const logoRectW = MS(112)
-              const logoRectH = MS(80)
-
-              const renderMainPlaceholder = () => (
-                <View style={[styles.coverPlaceholder, { backgroundColor: formData.cardColor }]}>
-                  <SalonXLogo width={MS(72)} height={MS(72)} />
-                </View>
-              )
-              const renderPencil = (field: ImageFieldType, position: object) => (
-                <TouchableOpacity style={[styles.cardPreviewEditBtn, position]} onPress={() => openImageModal(field)} disabled={loading}>
+            {/* Card preview: same CardImageLayout as CardItem - identical display */}
+            <CardImageLayout
+              layout={formData.imageLayout}
+              profile={formData.profile?.trim() || null}
+              logo={formData.logo?.trim() || null}
+              cover={formData.cover?.trim() || null}
+              cardColor={formData.cardColor}
+              height={VS(150)}
+              onImageError={() => showError('Image failed to load', 'Try again or choose another image.')}
+              renderEditButton={(field) => (
+                <TouchableOpacity
+                  style={[styles.cardPreviewEditBtn, { top: MS(8), right: MS(8) }]}
+                  onPress={() => openImageModal(field)}
+                  disabled={loading}
+                >
                   <MaterialCommunityIcons name="pencil" size={ICON_SM} color={colors.primary} />
                 </TouchableOpacity>
-              )
-
-              const hasOverflowLayout = layout === 'layout5' || layout === 'layout6' || layout === 'layout7'
-              const overflowPadding = hasOverflowLayout ? MS(32) : 0
-              const isShowingPlaceholder =
-                (layout === null && (!lastUploadedField || !formData[lastUploadedField])) ||
-                (layout === 'layout1' && !formData.profile) ||
-                (layout === 'layout2' && !formData.logo) ||
-                (layout === 'layout3' && !formData.cover) ||
-                (layout === 'layout4' && !formData.profile) ||
-                (layout === 'layout5' && !formData.cover) ||
-                (layout === 'layout6' && !formData.cover) ||
-                (layout === 'layout7' && !formData.cover)
-              return (
-                <View style={{ paddingBottom: overflowPadding }}>
-                  <View
-                    style={[
-                      styles.cardPreviewBox,
-                      { backgroundColor: isShowingPlaceholder ? formData.cardColor : 'transparent', height },
-                    ]}
-                  >
-                  {/* No layout selected: show latest uploaded image in cover preview */}
-                  {layout === null && (
-                    <>
-                      {lastUploadedField && formData[lastUploadedField] ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image
-                            source={{ uri: formData[lastUploadedField] }}
-                            style={styles.cardPreviewCover}
-                            resizeMode={lastUploadedField === 'logo' ? 'contain' : 'cover'}
-                            onError={() => showError('Image failed to load', 'Try again or choose another image.')}
-                          />
-                          {renderPencil(lastUploadedField, { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 1: profile only, cover size */}
-                  {layout === 'layout1' && (
-                    <>
-                      {formData.profile ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.profile }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('profile', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 2: logo only, full preview area (cover so it fills the box) */}
-                  {layout === 'layout2' && (
-                    <>
-                      {formData.logo ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.logo }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('logo', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 3: cover only, cover size */}
-                  {layout === 'layout3' && (
-                    <>
-                      {formData.cover ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.cover }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('cover', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 4: profile cover size, logo circle bottom-left */}
-                  {layout === 'layout4' && (
-                    <>
-                      {formData.profile ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.profile }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('profile', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                      {formData.logo && (
-                        <>
-                          <View
-                            style={[
-                              styles.cardPreviewProfileWrap,
-                              { left: MS(12), bottom: MS(12), right: undefined, width: profileCircleSize, height: profileCircleSize, borderRadius: profileCircleRadius },
-                            ]}
-                          >
-                            <Image source={{ uri: formData.logo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-                          </View>
-                          {renderPencil('logo', { left: MS(12) + profileCircleSize - MS(28), bottom: MS(12) })}
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 5: cover + profile */}
-                  {layout === 'layout5' && (
-                    <>
-                      {formData.cover ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.cover }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('cover', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                      {formData.profile && (
-                        <>
-                          <View
-                            style={[
-                              styles.cardPreviewProfileWrap,
-                              { left: MS(12), bottom: MS(-profileCircleSize / 2), right: undefined, width: profileCircleSize, height: profileCircleSize, borderRadius: profileCircleRadius },
-                            ]}
-                          >
-                            <Image source={{ uri: formData.profile }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                          </View>
-                          {renderPencil('profile', { left: MS(12) + profileCircleSize - MS(28), bottom: -profileCircleSize / 2 })}
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 6: cover + logo rect 2x bottom-right */}
-                  {layout === 'layout6' && (
-                    <>
-                      {formData.cover ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.cover }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('cover', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                      {formData.logo && (
-                        <>
-                          <View style={[styles.cardPreviewLogoWrap, { right: MS(12), bottom: -logoRectH / 2, width: logoRectW, height: logoRectH }]}>
-                            <Image source={{ uri: formData.logo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-                          </View>
-                          {renderPencil('logo', { right: MS(12), bottom: -logoRectH / 2 })}
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Layout 7: cover + profile circle 1.5x left bottom, logo 2x right bottom */}
-                  {layout === 'layout7' && (
-                    <>
-                      {formData.cover ? (
-                        <View style={styles.cardPreviewCoverArea}>
-                          <Image source={{ uri: formData.cover }} style={styles.cardPreviewCover} resizeMode="cover" onError={() => showError('Image failed to load', 'Try again or choose another image.')} />
-                          {renderPencil('cover', { top: MS(8), right: MS(8) })}
-                        </View>
-                      ) : (
-                        renderMainPlaceholder()
-                      )}
-                      {formData.profile && (
-                        <>
-                          <View
-                            style={[
-                              styles.cardPreviewProfileWrap,
-                              { left: MS(12), bottom: -profileCircleSize / 2, right: undefined, width: profileCircleSize, height: profileCircleSize, borderRadius: profileCircleRadius },
-                            ]}
-                          >
-                            <Image source={{ uri: formData.profile }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                          </View>
-                          {renderPencil('profile', { left: MS(12) + profileCircleSize - MS(28), bottom: -profileCircleSize / 2 })}
-                        </>
-                      )}
-                      {formData.logo && (
-                        <>
-                          <View style={[styles.cardPreviewLogoWrap, { right: MS(12), bottom: -logoRectH / 2, width: logoRectW, height: logoRectH }]}>
-                            <Image source={{ uri: formData.logo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-                          </View>
-                          {renderPencil('logo', { right: MS(12), bottom: -logoRectH / 2 })}
-                        </>
-                      )}
-                    </>
-                  )}
-                </View>
-                </View>
-              )
-            })()}
+              )}
+            />
 
             {/* Row: only show upload button when that image is not uploaded */}
             <ScrollView
@@ -1506,7 +1548,6 @@ const CreateCard = () => {
                   autoCapitalize="words"
                   rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
                   onPressRightIcon={() => { handleInputChange('middleName', ''); setPersonalDetailExpanded((p) => ({ ...p, middleName: false })) }}
-                  showRightIconOnlyWhenFocused
                 />
               </View>
             )}
@@ -1519,7 +1560,6 @@ const CreateCard = () => {
                   labelBgColor={colors.card}
                   rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
                   onPressRightIcon={() => { handleInputChange('prefix', ''); setPersonalDetailExpanded((p) => ({ ...p, prefix: false })) }}
-                  showRightIconOnlyWhenFocused
                 />
               </View>
             )}
@@ -1532,7 +1572,6 @@ const CreateCard = () => {
                   labelBgColor={colors.card}
                   rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
                   onPressRightIcon={() => { handleInputChange('suffix', ''); setPersonalDetailExpanded((p) => ({ ...p, suffix: false })) }}
-                  showRightIconOnlyWhenFocused
                 />
               </View>
             )}
@@ -1545,7 +1584,6 @@ const CreateCard = () => {
                   labelBgColor={colors.card}
                   rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
                   onPressRightIcon={() => { handleInputChange('pronoun', ''); setPersonalDetailExpanded((p) => ({ ...p, pronoun: false })) }}
-                  showRightIconOnlyWhenFocused
                 />
               </View>
             )}
@@ -1559,7 +1597,6 @@ const CreateCard = () => {
                   autoCapitalize="words"
                   rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
                   onPressRightIcon={() => { handleInputChange('preferred', ''); setPersonalDetailExpanded((p) => ({ ...p, preferred: false })) }}
-                  showRightIconOnlyWhenFocused
                 />
               </View>
             )}
@@ -1573,7 +1610,6 @@ const CreateCard = () => {
                   autoCapitalize="words"
                   rightIcon={<MaterialCommunityIcons name="delete-outline" size={MS(20)} color={colors.placeholder} />}
                   onPressRightIcon={() => { handleInputChange('maidenName', ''); setPersonalDetailExpanded((p) => ({ ...p, maidenName: false })) }}
-                  showRightIconOnlyWhenFocused
                 />
               </View>
             )}
@@ -1653,11 +1689,22 @@ const CreateCard = () => {
 
             <View style={styles.inputGroup}>
               <FloatingOutlinedInput
+                label="Company"
+                value={formData.company}
+                onChangeText={(value) => handleInputChange('company', value)}
+                labelBgColor={colors.card}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <FloatingOutlinedInput
                 label="Phone number"
                 value={formData.phoneNumber}
                 onChangeText={(value) => handleInputChange('phoneNumber', value)}
                 labelBgColor={colors.card}
                 keyboardType="phone-pad"
+                restrictInput="numeric"
               />
             </View>
 
@@ -1669,126 +1716,169 @@ const CreateCard = () => {
                 labelBgColor={colors.card}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                restrictInput="email"
               />
             </View>
           </View>
 
+          {/* Social Media Section - reference image: added links above, tap to add, icon grid */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontFamily: fonts.medium, fontSize: MS(18), color: colors.text }]}>Social Links (Optional)</Text>
+            <Text style={[styles.sectionTitle, { fontFamily: fonts.medium, fontSize: MS(18), color: colors.text }]}>Social Links</Text>
             
-            {formData.socialLinks.map((link, index) => (
-              <View key={index} style={styles.socialLinkRow}>
-                <View style={styles.socialLinkInfo}>
-                  <Text style={[styles.socialLinkType, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>{link.type}</Text>
-                  <Text style={[styles.socialLinkUrl, { fontFamily: fonts.regular, fontSize: MS(12), color: colors.placeholder }]} numberOfLines={1}>{link.url}</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => removeSocialLink(index)}
-                  style={styles.removeButton}
-                >
-                  <MaterialCommunityIcons name="close" size={ICON_SM} color={colors.error} />
-                </TouchableOpacity>
-              </View>
-            ))}
-            
-            <View style={styles.addSocialLinkContainer}>
-              <View style={styles.socialLinkInputs}>
-                <View style={styles.socialLinkTypeSelect}>
-                  <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Type</Text>
-                  <View style={styles.socialLinkTypeButtons}>
-                    {['linkedin', 'facebook', 'twitter', 'instagram', 'github', 'website'].map((type) => (
-                      <TouchableOpacity
-                        key={type}
-                        style={[
-                          styles.socialLinkTypeButton,
-                          currentSocialLink.type === type && styles.socialLinkTypeButtonActive
-                        ]}
-                        onPress={() => setCurrentSocialLink(prev => ({ ...prev, type }))}
-                      >
-                        <Text style={[
-                          styles.socialLinkTypeButtonText,
-                          currentSocialLink.type === type && styles.socialLinkTypeButtonTextActive,
-                          { fontFamily: fonts.regular, fontSize: MS(12), color: currentSocialLink.type === type ? colors.buttonPrimaryText : colors.placeholder }
-                        ]}>
-                          {type}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+            {/* Added links - above the grid, with remove X */}
+            {formData.socialLinks.map((link, index) => {
+              const linkOption = SOCIAL_MEDIA_OPTIONS.find(o => o.type === link.type)
+              const linkLabel = linkOption?.label || link.type
+              return (
+                <View key={index} style={styles.socialLinkRowWithIcon}>
+                  <View style={[styles.socialLinkIconCircle, { backgroundColor: formData.cardColor }]}>
+                    <MaterialCommunityIcons name={(linkOption?.icon || 'link') as any} size={MS(20)} color={getSocialIconColor(formData.cardColor)} />
                   </View>
+                  <View style={styles.socialLinkInfo}>
+                    <Text style={[styles.socialLinkType, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]} numberOfLines={1}>{link.url}</Text>
+                    <Text style={[styles.socialLinkUrl, { fontFamily: fonts.regular, fontSize: MS(12), color: colors.placeholder }]} numberOfLines={1}>
+                      {link.label || linkLabel}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => removeSocialLink(index)}
+                    style={styles.removeButton}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <MaterialCommunityIcons name="close" size={ICON_SM} color={colors.error} />
+                  </TouchableOpacity>
                 </View>
-                
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.label, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>URL</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter social link URL"
-                    placeholderTextColor={colors.placeholder}
-                    value={currentSocialLink.url}
-                    onChangeText={(value) => setCurrentSocialLink(prev => ({ ...prev, url: value }))}
-                    autoCapitalize="none"
-                    keyboardType="url"
-                  />
-                </View>
+              )
+            })}
+            
+            {/* Tap to add prompt */}
+            <View style={styles.tapToAddPrompt}>
+              <Text style={[styles.tapToAddText, { fontFamily: fonts.regular, fontSize: MS(14), color: colors.textSecondary }]}>Tap a field below to add it</Text>
+              <View style={[styles.tapToAddPlusCircle, { backgroundColor: formData.cardColor }]}>
+                <MaterialCommunityIcons name="plus" size={MS(16)} color={getSocialIconColor(formData.cardColor)} />
               </View>
-              
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={addSocialLink}
-              >
-                <MaterialCommunityIcons name="plus" size={ICON_SM} color={colors.primary} />
-                <Text style={[styles.addButtonText, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.primary }]}>Add Link</Text>
-              </TouchableOpacity>
+            </View>
+            
+            {/* Social Media Icon Grid - bg opacity 0.25 */}
+            <View style={[styles.socialMediaSection, { backgroundColor: formData.cardColor + '30' }]}>
+              <View style={styles.socialMediaGrid}>
+                {SOCIAL_MEDIA_OPTIONS.map((item) => (
+                  <TouchableOpacity
+                    key={item.type}
+                    style={[styles.socialMediaIconItem, { width: socialMediaItemWidth }]}
+                    onPress={() => openSocialLinkModal(item.type)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.socialMediaIconCircle, { backgroundColor: formData.cardColor }]}>
+                      <MaterialCommunityIcons
+                        name={item.icon as any}
+                        size={MS(24)}
+                        color={getSocialIconColor(formData.cardColor)}
+                      />
+                    </View>
+                    <Text style={[styles.socialMediaIconLabel, { fontFamily: fonts.medium, fontSize: MS(10), color: colors.text }]} numberOfLines={1}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           </View>
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { fontFamily: fonts.medium, fontSize: MS(18), color: colors.text }]}>Card Color</Text>
-            <View style={styles.colorOptions}>
-              {cardColors.map((color) => {
-                // Determine check icon color based on background brightness
-                const getCheckIconColor = (bgColor: string) => {
-                  // Convert hex to RGB
-                  const hex = bgColor.replace('#', '')
-                  const r = parseInt(hex.substr(0, 2), 16)
-                  const g = parseInt(hex.substr(2, 2), 16)
-                  const b = parseInt(hex.substr(4, 2), 16)
-                  // Calculate brightness
-                  const brightness = (r * 299 + g * 587 + b * 114) / 1000
-                  // Use theme colors for better contrast
-                  return brightness > 128 ? colors.text : colors.buttonPrimaryText
-                }
-                
-                return (
+          {/* Social Link Add Modal */}
+          <Modal
+            visible={socialLinkModalVisible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={closeSocialLinkModal}
+          >
+            <View style={[styles.modalContainer, { backgroundColor: colors.background, paddingTop: modalPadding.top, paddingBottom: modalPadding.bottom, paddingLeft: modalPadding.left, paddingRight: modalPadding.right }]}>
+              <View style={[styles.modalHeader, styles.socialLinkModalHeader, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={closeSocialLinkModal} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ padding: MS(8), margin: -MS(8) }}>
+                  <MaterialCommunityIcons name="arrow-left" size={ICON_HEADER} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.modalTitle, { fontFamily: fonts.medium, color: colors.text, flex: 1, textAlign: 'center' }]}>
+                  Add {SOCIAL_MEDIA_OPTIONS.find(o => o.type === socialLinkModalType)?.label || socialLinkModalType}
+                </Text>
+                <TouchableOpacity onPress={saveSocialLink} style={{ padding: MS(8), margin: -MS(8), minWidth: MS(50) }} disabled={!socialLinkModalUrl.trim()} activeOpacity={0.7}>
+                  <Text style={[styles.modalSaveButton, { fontFamily: fonts.medium, fontSize: MS(16), color: socialLinkModalUrl.trim() ? formData.cardColor : colors.placeholder }]}>Save</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Live preview - updates on change, same style as card display */}
+              <View style={[styles.socialLinkRowWithIcon, { paddingHorizontal: MS(16), borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                <View style={[styles.socialLinkIconCircle, { backgroundColor: formData.cardColor }]}>
+                  <MaterialCommunityIcons
+                    name={(SOCIAL_MEDIA_OPTIONS.find(o => o.type === socialLinkModalType)?.icon || 'link') as any}
+                    size={MS(20)}
+                    color={getSocialIconColor(formData.cardColor)}
+                  />
+                </View>
+                <View style={styles.socialLinkInfo}>
+                  <Text style={[styles.socialLinkType, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]} numberOfLines={1}>
+                    {socialLinkModalUrl.trim() || 'Enter link above'}
+                  </Text>
+                  <Text style={[styles.socialLinkUrl, { fontFamily: fonts.regular, fontSize: MS(12), color: colors.placeholder }]} numberOfLines={1}>
+                    {socialLinkModalLabel.trim() || SOCIAL_MEDIA_OPTIONS.find(o => o.type === socialLinkModalType)?.label || ''}
+                  </Text>
+                </View>
+              </View>
+
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: MS(16) }} keyboardShouldPersistTaps="handled">
+                <View style={styles.inputGroup}>
+                  <FloatingOutlinedInput
+                    label={SOCIAL_MEDIA_OPTIONS.find(o => o.type === socialLinkModalType)?.inputLabel || 'URL or link'}
+                    value={socialLinkModalUrl}
+                    onChangeText={setSocialLinkModalUrl}
+                    labelBgColor={colors.background}
+                    autoCapitalize="none"
+                    keyboardType={SOCIAL_MEDIA_OPTIONS.find(o => o.type === socialLinkModalType)?.keyboardType || 'url'}
+                    restrictInput={SOCIAL_MEDIA_OPTIONS.find(o => o.type === socialLinkModalType)?.restrictInput || 'none'}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <FloatingOutlinedInput
+                    label="Label (optional)"
+                    value={socialLinkModalLabel}
+                    onChangeText={setSocialLinkModalLabel}
+                    labelBgColor={colors.background}
+                  />
+                </View>
+                <Text style={[styles.labelSuggestions, { fontFamily: fonts.regular, fontSize: MS(12), color: colors.textSecondary }]}>Here are some suggestions for your label:</Text>
+                <View style={styles.labelSuggestionsRow}>
                   <TouchableOpacity
-                    key={color.value}
-                    style={[
-                      styles.colorOption,
-                      formData.cardColor === color.value && styles.colorOptionSelected,
-                      { backgroundColor: color.value }
-                    ]}
-                    onPress={() => handleInputChange('cardColor', color.value)}
+                    style={[styles.labelSuggestionChip, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => setSocialLinkModalLabel('Work')}
                   >
-                    {formData.cardColor === color.value && (
-                      <MaterialCommunityIcons name="check" size={ICON_SM} color={getCheckIconColor(color.value)} />
-                    )}
+                    <Text style={[styles.labelSuggestionText, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Work</Text>
                   </TouchableOpacity>
-                )
-              })}
+                  <TouchableOpacity
+                    style={[styles.labelSuggestionChip, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => setSocialLinkModalLabel('Personal')}
+                  >
+                    <Text style={[styles.labelSuggestionText, { fontFamily: fonts.medium, fontSize: MS(14), color: colors.text }]}>Personal</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
-          </View>
+          </Modal>
+
+
 
           <TouchableOpacity
             style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
+            onPress={() => setCardPreviewVisible(true)}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color={colors.buttonPrimaryText} />
-            ) : (
-              <Text style={[styles.submitButtonText, { fontFamily: fonts.medium, fontSize: MS(16), color: colors.buttonPrimaryText }]}>Create Card</Text>
-            )}
+            <Text style={[styles.submitButtonText, { fontFamily: fonts.medium, fontSize: MS(16), color: colors.buttonPrimaryText }]}>Card Preview</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        <CardPreviewModal
+          visible={cardPreviewVisible}
+          onClose={() => setCardPreviewVisible(false)}
+          formData={formData}
+        />
       </SafeAreaView>
     </View>
   )

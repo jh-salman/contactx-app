@@ -1,7 +1,9 @@
+import { ShareCardModal } from '@/components/ShareCardModal'
+import { CardImageLayout } from '@/components/card/CardImageLayout'
 import { useTabBar } from '@/context/TabBar'
-import { useTheme, useThemeColors } from '@/context/ThemeContext'
+import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import React from 'react'
-import { Dimensions, Image, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Share, Alert, Linking } from 'react-native'
+import { Dimensions, Image, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Linking } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
@@ -31,6 +33,7 @@ const CardItem = ({
 }) => {
     // keep local state (optional but fine for immediate UI update)
     const [cardData, setCardData] = React.useState(item)
+    const [shareModalVisible, setShareModalVisible] = React.useState(false)
     React.useEffect(() => setCardData(item), [item])
 
     // error handler: invalid url + failed url skip
@@ -40,21 +43,59 @@ const CardItem = ({
     const { showTabBar, hideTabBar } = useTabBar()
     const { isDark } = useTheme()
     const colors = useThemeColors()
+    const fonts = useThemeFonts()
     const insets = useSafeAreaInsets()
 
-    // Extract card data
-    const personalInfo = cardData?.personalInfo || {}
-    const firstName = personalInfo?.firstName || ''
-    const lastName = personalInfo?.lastName || ''
-    const fullName = `${firstName} ${lastName}`.trim() || 'No Name'
-    const jobTitle = personalInfo?.jobTitle || ''
+    // Extract card data (handle both personalInfo and personal_info from API)
+    const personalInfo = cardData?.personalInfo || cardData?.personal_info || {}
+    const firstName = personalInfo?.firstName || personalInfo?.first_name || ''
+    const lastName = personalInfo?.lastName || personalInfo?.last_name || ''
+    const nameParts = [
+      personalInfo?.prefix,
+      firstName,
+      personalInfo?.middleName || personalInfo?.middle_name,
+      lastName,
+      personalInfo?.suffix,
+    ].filter(Boolean)
+    const fullName = nameParts.join(' ').trim() || cardData?.cardTitle || 'No Name'
+    const jobTitle = personalInfo?.jobTitle || personalInfo?.job_title || ''
     const companyName = personalInfo?.company || ''
-    const cardPhone = personalInfo?.phoneNumber || ''
+    const preferred = personalInfo?.preferred || ''
+    const cardPhone = personalInfo?.phoneNumber || personalInfo?.phone_number || ''
     const cardEmail = personalInfo?.email || ''
     const originalCardBgColor = cardData?.cardColor || '#000000'
 
-    // Extract social links
-    const socialLinksData = cardData?.socialLinks?.links || []
+    // Image layout - same as create card screen. Parse from API (object, string, or snake_case).
+    const rawLayouts = cardData?.imagesAndLayouts ?? cardData?.images_and_layouts
+    let layoutValue: string | null = null
+    if (rawLayouts != null) {
+      if (typeof rawLayouts === 'string') {
+        try {
+          const parsed = JSON.parse(rawLayouts) as { layout?: string }
+          layoutValue = parsed?.layout ?? null
+        } catch {
+          layoutValue = null
+        }
+      } else if (typeof rawLayouts === 'object' && rawLayouts !== null && 'layout' in rawLayouts) {
+        layoutValue = (rawLayouts as { layout?: string }).layout ?? null
+      }
+    }
+    const imageLayout = (layoutValue || cardData?.imageLayout || null) as
+      | 'layout1'
+      | 'layout2'
+      | 'layout3'
+      | 'layout4'
+      | 'layout5'
+      | 'layout6'
+      | 'layout7'
+      | null
+
+    // Extract social links (API returns socialLinks.links array)
+    const socialLinksData = Array.isArray(cardData?.socialLinks?.links)
+      ? cardData.socialLinks.links
+      : Array.isArray(cardData?.socialLinks)
+        ? cardData.socialLinks
+        : []
 
     // Get image URI helper
     const getImageUri = (type: 'cover' | 'logo' | 'profile') => {
@@ -69,16 +110,9 @@ const CardItem = ({
     const textColor = isDark ? '#FFFFFF' : '#000000'
     const secondaryTextColor = isDark ? '#CCCCCC' : '#666666'
 
-    // Share handler
-    const handleShare = async () => {
-        try {
-            const shareContent = {
-                message: `${fullName}${jobTitle ? ` - ${jobTitle}` : ''}${companyName ? ` at ${companyName}` : ''}${cardPhone ? `\nPhone: ${cardPhone}` : ''}`,
-            }
-            await Share.share(shareContent)
-        } catch (error) {
-            console.error('Error sharing:', error)
-        }
+    // Share handler - open Share Card modal
+    const handleShare = () => {
+        setShareModalVisible(true)
     }
 
     // Image upload handler (placeholder - can be implemented later)
@@ -86,19 +120,34 @@ const CardItem = ({
         Alert.alert('Upload Image', 'Image upload functionality can be added here')
     }
 
-    // Get social media icon name
+    // Get social media icon name (same as CardPreviewModal)
     const getSocialIcon = (platform: string): string => {
-        const iconMap: { [key: string]: string } = {
-            'facebook': 'facebook',
-            'twitter': 'twitter',
-            'instagram': 'instagram',
-            'linkedin': 'linkedin',
-            'youtube': 'youtube',
-            'github': 'github',
-            'website': 'web',
-            'whatsapp': 'whatsapp',
+        const iconMap: Record<string, string> = {
+            phone: 'phone', email: 'email', address: 'map-marker', link: 'link-variant', website: 'web',
+            linkedin: 'linkedin', instagram: 'instagram', twitter: 'twitter', x: 'twitter', facebook: 'facebook',
+            whatsapp: 'whatsapp', telegram: 'send', github: 'github', youtube: 'youtube', calendly: 'calendar-month',
+            threads: 'at', snapchat: 'ghost', tiktok: 'music', yelp: 'store', venmo: 'cash', paypal: 'credit-card-outline',
+            cashapp: 'currency-usd', discord: 'controller-classic', signal: 'message-text', skype: 'phone-outline', twitch: 'video',
         }
-        return iconMap[platform] || 'link'
+        return iconMap[platform?.toLowerCase()] || 'link'
+    }
+    const getSocialLabel = (type: string): string => {
+        const labels: Record<string, string> = {
+            phone: 'Phone', email: 'Email', address: 'Address', website: 'Company Website', linkedin: 'LinkedIn',
+            instagram: 'Instagram', x: 'X', facebook: 'Facebook', whatsapp: 'WhatsApp', telegram: 'Telegram',
+            github: 'GitHub', youtube: 'YouTube', calendly: 'Calendly', threads: 'Threads', snapchat: 'Snapchat',
+            tiktok: 'TikTok', yelp: 'Yelp', venmo: 'Venmo', paypal: 'PayPal', cashapp: 'Cash App', discord: 'Discord',
+            signal: 'Signal', skype: 'Skype', twitch: 'Twitch',
+        }
+        return labels[type?.toLowerCase()] || type || 'Link'
+    }
+    const getLinkUrl = (link: { type: string; url: string }) => {
+        const url = link.url?.trim() || ''
+        if (url.startsWith('http') || url.startsWith('tel:') || url.startsWith('mailto:')) return url
+        if (link.type === 'email') return `mailto:${url}`
+        if (link.type === 'phone') return `tel:${url.replace(/\s/g, '')}`
+        if (url && !url.startsWith('http')) return `https://${url}`
+        return url
     }
 
     const MAX_UP = -40
@@ -360,6 +409,7 @@ const CardItem = ({
 
     return (
         <GestureDetector gesture={gesture}>
+            <View>
             <View style={styles.container}>
                 <Animated.View
                     style={[
@@ -400,28 +450,37 @@ const CardItem = ({
                         },
                     ]}
                 >
-                    <Animated.View style={[styles.coverWrap, { backgroundColor: originalCardBgColor }, rnCoverWrapStyle]}>
-                        {getImageUri('cover') ? (
-                            <Image
-                                source={{ uri: getImageUri('cover') || '' }}
-                                style={styles.coverImage}
-                                resizeMode="cover"
-                                onError={() => {
-                                    setFailedImages((prev) => {
-                                        const next = new Set(prev)
-                                        next.add(getImageUri('cover') || '')
-                                        return next
-                                    })
-                                }}
-                            />
-                        ) : null}
-
+                    <Animated.View
+                        style={[
+                            styles.coverWrap,
+                            rnCoverWrapStyle,
+                            {
+                                backgroundColor: originalCardBgColor,
+                                height: width * 0.55,
+                                overflow: 'visible',
+                            },
+                        ]}
+                    >
+                        <CardImageLayout
+                            layout={imageLayout ?? null}
+                            profile={getImageUri('profile')}
+                            logo={getImageUri('logo')}
+                            cover={getImageUri('cover')}
+                            cardColor={originalCardBgColor}
+                            height={width * 0.55}
+                            onImageError={(url) => {
+                                setFailedImages((prev) => {
+                                    const next = new Set(prev)
+                                    next.add(url)
+                                    return next
+                                })
+                            }}
+                        />
                         {/* Dark overlay for readability */}
-                        <View style={styles.coverOverlay} />
-
-                        {/* Edit/Upload button (optional, keep your logic) */}
+                        <View style={styles.coverOverlay} pointerEvents="box-none" />
+                        {/* Action button above overlay */}
                         <TouchableOpacity
-                            style={styles.coverActionBtn}
+                            style={[styles.coverActionBtn, { zIndex: 10 }]}
                             onPress={showImageUploadOptions}
                             disabled={uploading}
                             activeOpacity={0.75}
@@ -434,77 +493,107 @@ const CardItem = ({
                         </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Body */}
-                    <Animated.View style={[styles.cardDesignContent, rnContentStyle]}>
-                        <Text style={[styles.fullName2, { color: textColor }]} numberOfLines={1}>
+                    {/* Body - same design as CardPreviewModal */}
+                    <Animated.View
+                        style={[
+                            styles.cardDesignContent,
+                            rnContentStyle,
+                            ['layout5', 'layout6', 'layout7'].includes(imageLayout || '') && {
+                                paddingTop: 28,
+                            },
+                        ]}
+                    >
+                        {/* Profile section */}
+                        <Text style={[styles.profileName, { color: textColor, fontFamily: fonts.bold }]} numberOfLines={1}>
                             {fullName}
                         </Text>
-
                         {!!jobTitle && (
-                            <Text style={[styles.subText2, { color: secondaryTextColor }]} numberOfLines={1}>
+                            <Text style={[styles.profileTitle, { color: textColor, fontFamily: fonts.medium }]} numberOfLines={1}>
                                 {jobTitle}
                             </Text>
                         )}
-
                         {!!companyName && (
-                            <Text style={[styles.subText2, { color: secondaryTextColor }]} numberOfLines={1}>
+                            <Text style={[styles.profileCompany, { color: textColor, fontFamily: fonts.regular }]} numberOfLines={1}>
                                 {companyName}
                             </Text>
                         )}
-
-                        {/* Phone row (exact like screenshot: left icon + number) */}
-                        {!!cardPhone && (
-                            <View style={styles.phoneRow2}>
-                                <View style={[styles.phoneIcon2, { backgroundColor: originalCardBgColor }]}>
-                                    <MaterialCommunityIcons name="phone" size={20} color="#fff" />
-                                </View>
-                                <Text style={[styles.phoneText2, { color: textColor }]}>{cardPhone}</Text>
-                            </View>
+                        {!!preferred && (
+                            <Text style={[styles.profileTagline, { color: secondaryTextColor, fontFamily: fonts.regular }]} numberOfLines={1}>
+                                {preferred}
+                            </Text>
                         )}
 
-                        {/* Email row */}
-                        {!!cardEmail && (
-                            <View style={styles.contactRow}>
-                                <View style={[styles.contactIcon, { backgroundColor: originalCardBgColor }]}>
-                                    <MaterialCommunityIcons name="email" size={20} color="#fff" />
-                                </View>
-                                <Text style={[styles.contactText, { color: textColor }]} numberOfLines={1}>
-                                    {cardEmail}
-                                </Text>
-                            </View>
-                        )}
-
-                        {/* Social Links */}
-                        {Array.isArray(socialLinksData) && socialLinksData.length > 0 && (
-                            <>
-                                {socialLinksData.map((link: any, index: number) => {
-                                    if (!link?.url && !link?.platform) return null
-                                    const platform = link.platform?.toLowerCase() || ''
-                                    const platformName = link.platform || link.name || 'Link'
-                                    const iconName = getSocialIcon(platform) as any
-                                    
-                                    return (
-                                        <TouchableOpacity
-                                            key={index}
-                                            style={styles.socialLinkRow}
-                                            onPress={() => {
-                                                if (link.url) {
-                                                    Linking.openURL(link.url).catch(err => console.error('Failed to open URL:', err))
-                                                }
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[styles.socialLinkIcon, { backgroundColor: originalCardBgColor }]}>
-                                                <MaterialCommunityIcons name={iconName} size={20} color="#fff" />
-                                            </View>
-                                            <Text style={[styles.socialLinkText, { color: textColor }]} numberOfLines={1}>
-                                                {platformName}
+                        {/* Contact section - Email, Phone, Social links with icons (CardPreview style) */}
+                        <View style={styles.contactSection}>
+                            {!!cardEmail && (
+                                <TouchableOpacity
+                                    style={[styles.contactRowCard, { borderBottomColor: colors.border }]}
+                                    onPress={() => Linking.openURL(`mailto:${cardEmail}`).catch(() => {})}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.contactIconCard, { backgroundColor: originalCardBgColor }]}>
+                                        <MaterialCommunityIcons name="email-outline" size={20} color="#fff" />
+                                    </View>
+                                    <View style={styles.contactTextWrap}>
+                                        <Text style={[styles.contactLabelCard, { color: secondaryTextColor, fontFamily: fonts.regular }]}>Email</Text>
+                                        <Text style={[styles.contactTextCard, { color: textColor, fontFamily: fonts.medium }]} numberOfLines={1}>
+                                            {cardEmail}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            {!!cardPhone && (
+                                <TouchableOpacity
+                                    style={[styles.contactRowCard, { borderBottomColor: colors.border }]}
+                                    onPress={() => Linking.openURL(`tel:${cardPhone.replace(/\s/g, '')}`).catch(() => {})}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.contactIconCard, { backgroundColor: originalCardBgColor }]}>
+                                        <MaterialCommunityIcons name="phone-outline" size={20} color="#fff" />
+                                    </View>
+                                    <View style={styles.contactTextWrap}>
+                                        <Text style={[styles.contactLabelCard, { color: secondaryTextColor, fontFamily: fonts.regular }]}>Phone</Text>
+                                        <Text style={[styles.contactTextCard, { color: textColor, fontFamily: fonts.medium }]} numberOfLines={1}>
+                                            {cardPhone}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            {Array.isArray(socialLinksData) && socialLinksData.map((link: any, idx: number) => {
+                                if (!link?.url && !link?.platform && !link?.type) return null
+                                const platform = (link.platform || link.type)?.toLowerCase() || ''
+                                const iconName = getSocialIcon(platform)
+                                const platformLabel = getSocialLabel(platform)
+                                const displayText = link.url || link.label || platform || 'Link'
+                                const url = getLinkUrl(link)
+                                const subLabel = link.label && link.label !== platformLabel ? link.label : null
+                                return (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={[styles.contactRowCard, { borderBottomColor: colors.border }]}
+                                        onPress={() => url && Linking.openURL(url).catch(() => {})}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={[styles.contactIconCard, { backgroundColor: originalCardBgColor }]}>
+                                            <MaterialCommunityIcons name={iconName as any} size={20} color="#fff" />
+                                        </View>
+                                        <View style={styles.contactTextWrap}>
+                                            <Text style={[styles.contactLabelCard, { color: secondaryTextColor, fontFamily: fonts.regular }]}>
+                                                {platformLabel}
                                             </Text>
-                                        </TouchableOpacity>
-                                    )
-                                })}
-                            </>
-                        )}
+                                            <Text style={[styles.contactTextCard, { color: textColor, fontFamily: fonts.medium }]} numberOfLines={1}>
+                                                {displayText}
+                                            </Text>
+                                            {subLabel && subLabel !== displayText && (
+                                                <Text style={[styles.contactSubLabelCard, { color: secondaryTextColor, fontFamily: fonts.regular }]} numberOfLines={1}>
+                                                    {subLabel}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                )
+                            })}
+                        </View>
                     </Animated.View>
                 </Animated.View>
 
@@ -559,6 +648,13 @@ const CardItem = ({
                     </Animated.View>
                 </Animated.View>
             </View>
+
+            <ShareCardModal
+                visible={shareModalVisible}
+                onClose={() => setShareModalVisible(false)}
+                cardData={cardData}
+            />
+            </View>
         </GestureDetector>
     )
 }
@@ -574,14 +670,12 @@ const styles = StyleSheet.create({
     cardContainer: {
         width,
         height: '100%',
-        
         left: 0,
         overflow: 'visible',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
-        backgroundColor: 'red',
     },
     qrCard: {
         position: 'absolute',
@@ -631,29 +725,39 @@ const styles = StyleSheet.create({
     },
     cardDesignContent: {
         flex: 1,
+        minHeight: 180,
         padding: 20,
         justifyContent: 'flex-start',
         alignItems: 'flex-start',
     },
-    fullName2: {
-        fontSize: 28,
+    profileName: {
+        fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 8,
-        textAlign: 'left',
-    },
-    subText2: {
-        fontSize: 16,
         marginBottom: 4,
-        textAlign: 'left',
     },
-    phoneRow2: {
+    profileTitle: {
+        fontSize: 16,
+        marginBottom: 2,
+    },
+    profileCompany: {
+        fontSize: 16,
+        marginBottom: 2,
+    },
+    profileTagline: {
+        fontSize: 14,
+        marginTop: 4,
+    },
+    contactSection: {
+        marginTop: 12,
+        width: '100%',
+    },
+    contactRowCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        marginTop: 20,
-        marginBottom: 20,
+        paddingVertical: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    phoneIcon2: {
+    contactIconCard: {
         width: 40,
         height: 40,
         borderRadius: 20,
@@ -661,49 +765,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 12,
     },
-    phoneText2: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    contactRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 16,
-        marginBottom: 8,
-        justifyContent: 'flex-start',
-    },
-    contactIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    contactText: {
-        fontSize: 16,
-        fontWeight: '500',
+    contactTextWrap: {
         flex: 1,
     },
-    socialLinkRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        marginTop: 16,
-        marginBottom: 8,
+    contactLabelCard: {
+        fontSize: 12,
+        marginBottom: 2,
     },
-    socialLinkIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    socialLinkText: {
-        fontSize: 16,
+    contactTextCard: {
+        fontSize: 15,
         fontWeight: '500',
-        flex: 1,
+    },
+    contactSubLabelCard: {
+        fontSize: 11,
+        marginTop: 2,
     },
     shareBtn2: {
         position: 'absolute',

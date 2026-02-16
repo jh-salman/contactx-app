@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/AuthContext'
+import { restrictInputByMode } from '@/components/FloatingOutlinedInput'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import { SalonXLogo } from '@/components/SalonXLogo'
 import { logger } from '@/lib/logger'
@@ -252,7 +253,7 @@ const Login = () => {
                 placeholder="Enter Phone Number (BD/USA)"
                 placeholderTextColor={colors.placeholder}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(v) => setPhone(restrictInputByMode(v, 'numeric'))}
                 style={[
                   styles.input,
                   {

@@ -55,7 +55,9 @@ export const LightColors = {
   text: '#000000',
 
   border: '#E5E7EB',
+  // border: 'transparent',
   borderLight: '#F3F4F6',
+  // borderLight: 'transparent',
   input: '#FFFFFF',
   inputBackground: '#FFFFFF',
   inputText: '#000000',

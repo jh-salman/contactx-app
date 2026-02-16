@@ -1,9 +1,9 @@
-import { SaveContactButton } from '@/components/SaveContactButton'
 import { SalonXLogo } from '@/components/SalonXLogo'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme, useThemeColors, useThemeFonts } from '@/context/ThemeContext'
 import { useSaveContact } from '@/hooks/useSaveContact'
 import { logger } from '@/lib/logger'
+import { showSuccess, showError, showWarning } from '@/lib/toast'
 import { apiService } from '@/services/apiService'
 import { FontAwesome5 } from '@expo/vector-icons'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
@@ -24,11 +24,16 @@ interface CardModalProps {
     city?: string;
     country?: string;
   } | null
+  locationReady?: boolean // When false, auto-save waits for location; when true/undefined, proceeds
+  autoSave?: boolean
 }
 
-const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) => {
+const CardModal = ({ visible, cardId, onClose, locationData, locationReady = true, autoSave }: CardModalProps) => {
   const [card, setCard] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(false)
+  const [sharePickerVisible, setSharePickerVisible] = React.useState(false)
+  const [myCards, setMyCards] = React.useState<any[]>([])
+  const [sharingCard, setSharingCard] = React.useState(false)
   const colors = useThemeColors()
   const fonts = useThemeFonts()
   const { isDark } = useTheme()
@@ -38,6 +43,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
   const { saveContact, saving, isSaved, setIsSaved, checkIfSaved } = useSaveContact({
     cardId,
     cardData: card,
+    locationData,
     onSuccess: () => {
       // Optional: close modal or refresh
     },
@@ -54,6 +60,13 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
       translateY.value = withSpring(height, { damping: 20, stiffness: 90 })
     }
   }, [visible, cardId, locationData]) // Include locationData to re-fetch when it becomes available
+
+  // Auto-save contact when card + location ready (e.g. from QR scan)
+  useEffect(() => {
+    if (!visible || !card || !isAuthenticated || !autoSave || isSaved || saving) return
+    if (locationReady === false) return // Wait for location before auto-save
+    saveContact({ silent: true })
+  }, [visible, card, isAuthenticated, autoSave, isSaved, saving, locationReady])
 
   const fetchCard = async () => {
     if (!cardId) return
@@ -89,14 +102,15 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
       }
       
 
-      // Log card information
+      // Log card information (support personalInfo + personal_info)
+      const pi = cardData?.personalInfo || cardData?.personal_info || {}
       logger.debug('CARD INFORMATION', {
         cardTitle: cardData?.cardTitle || 'N/A',
         cardColor: cardData?.cardColor || 'N/A',
-        owner: `${cardData?.personalInfo?.firstName || 'N/A'} ${cardData?.personalInfo?.lastName || ''}`,
-        company: cardData?.personalInfo?.company || 'N/A',
-        email: cardData?.personalInfo?.email || 'N/A',
-        phone: cardData?.personalInfo?.phoneNumber || cardData?.personalInfo?.phone || 'N/A'
+        owner: `${(pi?.firstName ?? pi?.first_name) || ''} ${(pi?.lastName ?? pi?.last_name) || ''}`.trim() || 'N/A',
+        company: pi?.company || 'N/A',
+        email: pi?.email || 'N/A',
+        phone: (pi?.phoneNumber ?? pi?.phone_number ?? pi?.phone) || 'N/A'
       })
 
       setCard(cardData)
@@ -133,9 +147,18 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
   // Get card background color
   const originalCardBgColor = card?.cardColor || colors.primary || '#FF6B9D'
 
-  // Get initials
-  const firstName = card?.personalInfo?.firstName || ''
-  const lastName = card?.personalInfo?.lastName || ''
+  // Extract personalInfo (support personalInfo + personal_info, camelCase + snake_case)
+  const pi = card?.personalInfo || card?.personal_info || {}
+  const firstName = pi?.firstName ?? pi?.first_name ?? ''
+  const lastName = pi?.lastName ?? pi?.last_name ?? ''
+  const nameParts = [
+    pi?.prefix,
+    firstName,
+    pi?.middleName ?? pi?.middle_name,
+    lastName,
+    pi?.suffix,
+  ].filter(Boolean)
+  const fullName = nameParts.join(' ').trim() || card?.cardTitle || 'No Name'
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'NA'
 
   // Check if card has logo or profile
@@ -187,6 +210,51 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to open link')
+    }
+  }
+
+  const handleShareYourCard = async () => {
+    try {
+      const res = await apiService.getAllCards()
+      const cards = res?.data || res?.cards || res || []
+      const list = Array.isArray(cards) ? cards : []
+      if (list.length === 0) {
+        showWarning('No cards', 'Create a card first to share')
+        return
+      }
+      if (list.length === 1) {
+        await doShareCard(list[0])
+        return
+      }
+      setMyCards(list)
+      setSharePickerVisible(true)
+    } catch (e: any) {
+      showError('Error', e?.response?.data?.message || 'Failed to load your cards')
+    }
+  }
+
+  const doShareCard = async (visitorCard: any) => {
+    const visitorCardId = visitorCard.id || visitorCard._id
+    if (!visitorCardId) return
+    setSharingCard(true)
+    try {
+      // Use locationData (GPS) or card.scanLocation (IP-based from scan API) when location was denied
+      const locationToSend = locationData || card?.scanLocation || undefined
+      const result = await apiService.shareVisitorContact(
+        cardId, // ownerCardId = scanned card
+        visitorCardId,
+        locationToSend
+      )
+      setSharePickerVisible(false)
+      if (result?.alreadySaved) {
+        showWarning('Already shared', 'Your card is already shared with this contact')
+      } else {
+        showSuccess('Shared', 'Your card has been shared successfully')
+      }
+    } catch (e: any) {
+      showError('Error', e?.response?.data?.message || 'Failed to share your card')
+    } finally {
+      setSharingCard(false)
     }
   }
 
@@ -276,16 +344,16 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                   {/* Name and Title */}
                   <View style={styles.nameSection}>
                     <Text style={[styles.cardName, { color: textColor, fontFamily: fonts.bold }]}>
-                      {firstName} {lastName}
+                      {fullName}
                     </Text>
-                    {card?.personalInfo?.jobTitle && (
+                    {(pi?.jobTitle ?? pi?.job_title) && (
                       <Text style={[styles.cardDesignation, { color: textSecondaryColor, fontFamily: fonts.regular }]}>
-                        {card.personalInfo.jobTitle}
+                        {pi.jobTitle ?? pi.job_title}
                       </Text>
                     )}
-                    {card?.personalInfo?.company && (
+                    {pi?.company && (
                       <Text style={[styles.cardCompany, { color: textSecondaryColor, fontFamily: fonts.medium }]}>
-                        {card.personalInfo.company}
+                        {pi.company}
                       </Text>
                     )}
                   </View>
@@ -293,7 +361,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                   {/* Contact Actions */}
                   <View style={styles.contactActionsContainer}>
                     {/* Phone */}
-                    {(card?.personalInfo?.phoneNumber || card?.personalInfo?.phone) && (
+                    {(pi?.phoneNumber ?? pi?.phone_number ?? pi?.phone) && (
                       <TouchableOpacity
                         style={[
                           styles.contactActionItem,
@@ -306,7 +374,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                               : colors.borderLight || 'rgba(0, 0, 0, 0.1)',
                           }
                         ]}
-                        onPress={() => handleContactAction('phone', card.personalInfo.phoneNumber || card.personalInfo.phone)}
+                        onPress={() => handleContactAction('phone', pi.phoneNumber ?? pi.phone_number ?? pi.phone ?? '')}
                         activeOpacity={0.7}
                       >
                         <View style={[styles.contactIconContainer, { backgroundColor: `${originalCardBgColor}20` }]}>
@@ -317,14 +385,14 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                             Phone
                           </Text>
                           <Text style={[styles.contactActionValue, { color: textColor, fontFamily: fonts.medium }]}>
-                            {card.personalInfo.phoneNumber || card.personalInfo.phone}
+                            {pi.phoneNumber ?? pi.phone_number ?? pi.phone}
                           </Text>
                         </View>
                       </TouchableOpacity>
                     )}
 
                     {/* Email */}
-                    {card?.personalInfo?.email && (
+                    {pi?.email && (
                       <TouchableOpacity
                         style={[
                           styles.contactActionItem,
@@ -337,7 +405,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                               : colors.borderLight || 'rgba(0, 0, 0, 0.1)',
                           }
                         ]}
-                        onPress={() => handleContactAction('email', card.personalInfo.email)}
+                        onPress={() => handleContactAction('email', pi.email)}
                         activeOpacity={0.7}
                       >
                         <View style={[styles.contactIconContainer, { backgroundColor: `${originalCardBgColor}20` }]}>
@@ -348,14 +416,14 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                             Email
                           </Text>
                           <Text style={[styles.contactActionValue, { color: textColor, fontFamily: fonts.medium }]}>
-                            {card.personalInfo.email}
+                            {pi.email}
                           </Text>
                         </View>
                       </TouchableOpacity>
                     )}
 
                     {/* Website */}
-                    {card?.personalInfo?.website && (
+                    {pi?.website && (
                       <TouchableOpacity
                         style={[
                           styles.contactActionItem,
@@ -368,7 +436,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                               : colors.borderLight || 'rgba(0, 0, 0, 0.1)',
                           }
                         ]}
-                        onPress={() => handleContactAction('website', card.personalInfo.website)}
+                        onPress={() => handleContactAction('website', pi.website)}
                         activeOpacity={0.7}
                       >
                         <View style={[styles.contactIconContainer, { backgroundColor: `${originalCardBgColor}20` }]}>
@@ -379,7 +447,7 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
                             Website
                           </Text>
                           <Text style={[styles.contactActionValue, { color: textColor, fontFamily: fonts.medium }]}>
-                            {card.personalInfo.website}
+                            {pi.website}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -414,17 +482,78 @@ const CardModal = ({ visible, cardId, onClose, locationData }: CardModalProps) =
               </ScrollView>
             ) : null}
 
-            {/* Save Contact Button - Fixed at Bottom */}
+            {/* Share Your Card Button - Fixed at Bottom */}
             {isAuthenticated && card && !loading && (
-              <SaveContactButton
-                onPress={saveContact}
-                loading={saving}
-                isSaved={isSaved}
-                cardColor={originalCardBgColor}
-              />
+              <View style={[styles.shareButtonContainer, { borderTopColor: colors.border || 'rgba(0,0,0,0.1)' }]}>
+                <TouchableOpacity
+                  style={[styles.shareButton, { backgroundColor: originalCardBgColor }]}
+                  onPress={handleShareYourCard}
+                  disabled={sharingCard}
+                  activeOpacity={0.8}
+                >
+                  {sharingCard ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="share-variant" size={22} color="#fff" />
+                      <Text style={[styles.shareButtonText, { color: '#fff', fontFamily: fonts.medium }]}>
+                        Share Your Card
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             )}
           </SafeAreaView>
         </Animated.View>
+
+        {/* Card Picker Modal - when user has 2+ cards */}
+        <Modal
+          visible={sharePickerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSharePickerVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.pickerBackdrop}
+            activeOpacity={1}
+            onPress={() => setSharePickerVisible(false)}
+          />
+          <View style={[styles.pickerContainer, { backgroundColor: colors.background }]}>
+            <Text style={[styles.pickerTitle, { color: colors.text, fontFamily: fonts.bold }]}>
+              Share which card?
+            </Text>
+            <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
+              {myCards.map((c: any) => {
+                const cid = c.id || c._id
+                const cpi = c?.personalInfo || c?.personal_info || {}
+                const cFirstName = cpi?.firstName ?? cpi?.first_name ?? ''
+                const cLastName = cpi?.lastName ?? cpi?.last_name ?? ''
+                const cNameParts = [cpi?.prefix, cFirstName, cpi?.middleName ?? cpi?.middle_name, cLastName, cpi?.suffix].filter(Boolean)
+                const name = cNameParts.length > 0 ? cNameParts.join(' ').trim() : c.cardTitle || 'Untitled Card'
+                return (
+                  <TouchableOpacity
+                    key={cid}
+                    style={[styles.pickerItem, { backgroundColor: colors.card || 'rgba(0,0,0,0.05)', borderColor: colors.border }]}
+                    onPress={() => doShareCard(c)}
+                    disabled={sharingCard}
+                  >
+                    <Text style={[styles.pickerItemText, { color: colors.text, fontFamily: fonts.medium }]}>{name}</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+            <TouchableOpacity
+              style={[styles.pickerCancel, { borderColor: colors.border }]}
+              onPress={() => setSharePickerVisible(false)}
+            >
+              <Text style={[styles.pickerCancelText, { color: colors.textSecondary, fontFamily: fonts.medium }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </View>
     </Modal>
   )
@@ -604,5 +733,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
+  },
+  shareButtonContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    gap: 8,
+  },
+  shareButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  pickerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '70%',
+  },
+  pickerTitle: {
+    fontSize: 18,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  pickerList: {
+    maxHeight: 280,
+    marginBottom: 12,
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  pickerItemText: {
+    fontSize: 16,
+  },
+  pickerCancel: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  pickerCancelText: {
+    fontSize: 16,
   },
 })

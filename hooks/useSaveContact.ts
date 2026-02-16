@@ -1,19 +1,32 @@
 import { apiService } from '@/services/apiService'
 import { logger } from '@/lib/logger'
-import { useRouter } from 'expo-router'
+import { showSuccess, showError, showWarning } from '@/lib/toast'
 import { useCallback, useEffect, useState } from 'react'
-import { Alert } from 'react-native'
 
 interface UseSaveContactProps {
   cardId: string
   cardData: any
+  locationData?: {
+    latitude?: number
+    longitude?: number
+    city?: string
+    country?: string
+    street?: string
+    streetNumber?: string
+    district?: string
+    region?: string
+    subregion?: string
+    postalCode?: string
+    name?: string
+    formattedAddress?: string
+    isoCountryCode?: string
+  } | null
   onSuccess?: () => void
 }
 
-export const useSaveContact = ({ cardId, cardData, onSuccess }: UseSaveContactProps) => {
+export const useSaveContact = ({ cardId, cardData, locationData, onSuccess }: UseSaveContactProps) => {
   const [saving, setSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
-  const router = useRouter()
 
   // Check if contact is already saved
   const checkIfSaved = useCallback(async () => {
@@ -46,53 +59,58 @@ export const useSaveContact = ({ cardId, cardData, onSuccess }: UseSaveContactPr
     }
   }, [cardData, cardId, checkIfSaved])
 
-  const saveContact = async () => {
+  const saveContact = async (options?: { silent?: boolean }) => {
     if (!cardData) return
 
     setSaving(true)
     try {
-      // Prepare contact data from card
-      const contactData = {
-        firstName: cardData.personalInfo?.firstName || '',
-        lastName: cardData.personalInfo?.lastName || '',
-        phone: cardData.personalInfo?.phoneNumber || cardData.personalInfo?.phone || '',
-        email: cardData.personalInfo?.email || '',
-        company: cardData.personalInfo?.company || '',
-        jobTitle: cardData.personalInfo?.jobTitle || '',
-        logo: cardData.logo || '',
-        profile_img: cardData.profile || '',
+      // Prepare contact data from card (support personalInfo + personal_info, camelCase + snake_case)
+      const pi = cardData?.personalInfo || cardData?.personal_info || {}
+      const contactData: Record<string, any> = {
+        firstName: pi?.firstName ?? pi?.first_name ?? '',
+        lastName: pi?.lastName ?? pi?.last_name ?? '',
+        phone: pi?.phoneNumber ?? pi?.phone_number ?? pi?.phone ?? '',
+        email: pi?.email ?? '',
+        company: pi?.company ?? '',
+        jobTitle: pi?.jobTitle ?? pi?.job_title ?? '',
+        logo: cardData?.logo ?? '',
+        profile_img: cardData?.profile ?? '',
+      }
+      // Use locationData (GPS) or cardData.scanLocation (IP-based from scan API) when location denied
+      const loc = locationData || cardData?.scanLocation
+      if (loc) {
+        contactData.latitude = loc.latitude
+        contactData.longitude = loc.longitude
+        contactData.city = loc.city
+        contactData.country = loc.country
+        if (locationData) {
+          contactData.street = locationData.street
+          contactData.streetNumber = locationData.streetNumber
+          contactData.district = locationData.district
+          contactData.region = locationData.region
+          contactData.subregion = locationData.subregion
+          contactData.postalCode = locationData.postalCode
+          contactData.addressName = locationData.name // village/place
+          contactData.formattedAddress = locationData.formattedAddress
+          contactData.isoCountryCode = locationData.isoCountryCode
+        }
       }
 
       const response = await apiService.saveContact(cardId, contactData)
 
       if (response?.alreadySaved) {
-        Alert.alert('Already Saved', 'This contact is already in your contacts')
+        if (!options?.silent) {
+          showWarning('Already Saved', 'This contact is already in your contacts')
+        }
         setIsSaved(true)
       } else {
-        Alert.alert(
-          'Success',
-          'Contact saved successfully!',
-          [
-            {
-              text: 'View Contacts',
-              onPress: () => {
-                router.push('/(tabs)/contacts' as any)
-                onSuccess?.()
-              },
-            },
-            {
-              text: 'OK',
-              onPress: () => {
-                setIsSaved(true)
-                onSuccess?.()
-              },
-            },
-          ]
-        )
+        setIsSaved(true)
+        onSuccess?.()
+        showSuccess('Contact Saved', 'Successfully added to your contacts')
       }
     } catch (error: any) {
       logger.error('Error saving contact', error)
-      Alert.alert(
+      showError(
         'Error',
         error.response?.data?.message || 'Failed to save contact. Please try again.'
       )

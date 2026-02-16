@@ -2,25 +2,42 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
   Easing,
+  Platform,
   Pressable,
   StyleProp,
   StyleSheet,
   Text,
   TextInput,
   TextInputProps,
+  TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native'
 import { moderateScale, verticalScale } from 'react-native-size-matters'
 import { useThemeColors } from '@/context/ThemeContext'
 
+
 const MS = moderateScale
 const VS = verticalScale
+
+export type InputRestrict = 'numeric' | 'email' | 'url' | 'alphanumeric' | 'none'
+
+export const restrictInputByMode = (text: string, mode: InputRestrict): string => {
+  if (mode === 'none' || !mode) return text
+  if (mode === 'numeric') return text.replace(/[^\d+\-\s()]/g, '') // phone: digits, +, -, space, ()
+  if (mode === 'email') return text.replace(/[^\w@.\-+]/g, '') // email: alphanumeric, @, ., -, +
+  if (mode === 'url') return text.replace(/[^\w\-._~:/?#[\]@!$&'()*+,;=%]/gi, '') // URL-safe
+  if (mode === 'alphanumeric') return text.replace(/[^\w@.$#:]/g, '') // letters, numbers, _, @, ., $, #, : (usernames, Discord, Skype)
+  return text
+}
 
 type Props = {
   label: string
   value: string
   onChangeText: (t: string) => void
+
+  /** Restrict input: numeric (phone), email, url, alphanumeric */
+  restrictInput?: InputRestrict
 
   /** Right side icon (e.g., trash). Pass a ReactNode */
   rightIcon?: React.ReactNode
@@ -45,6 +62,7 @@ export function FloatingOutlinedInput({
   label,
   value,
   onChangeText,
+  restrictInput: restrictMode = 'none',
   rightIcon,
   onPressRightIcon,
   showRightIconOnlyWhenFocused = false,
@@ -58,6 +76,9 @@ export function FloatingOutlinedInput({
   multiline = false,
   ...textInputProps
 }: Props) {
+  const handleChangeText = (text: string) => {
+    onChangeText(restrictInputByMode(text, restrictMode))
+  }
   const colors = useThemeColors()
   const [focused, setFocused] = useState(false)
   const inputRef = useRef<TextInput>(null)
@@ -108,7 +129,7 @@ export function FloatingOutlinedInput({
           styles.box,
           { borderColor: currentBorder, borderWidth },
           multiline && styles.boxMultiline,
-          disabled && { backgroundColor: colors.backgroundSecondary, opacity: 0.9 },
+          disabled && { backgroundColor: colors.inputBackground, opacity: 0.9 },
         ]}
       >
         <Animated.View
@@ -116,9 +137,9 @@ export function FloatingOutlinedInput({
             styles.labelWrap,
             labelStyle,
             {
-              backgroundColor: labelBgColor,
+              backgroundColor: colors.backgroundSecondary,
               zIndex: 10,
-              elevation: 10,
+              // elevation: 10,
             },
           ]}
           pointerEvents="none"
@@ -129,7 +150,7 @@ export function FloatingOutlinedInput({
         <TextInput
           ref={inputRef}
           value={value}
-          onChangeText={onChangeText}
+          onChangeText={handleChangeText}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder=""
@@ -146,13 +167,24 @@ export function FloatingOutlinedInput({
         />
 
         {rightIcon && (!showRightIconOnlyWhenFocused || focused) ? (
-          <Pressable
-            onPress={disabled ? undefined : onPressRightIcon}
-            hitSlop={MS(10)}
-            style={styles.rightIconBtn}
-          >
-            {rightIcon}
-          </Pressable>
+          Platform.OS === 'android' ? (
+            <TouchableOpacity
+              onPress={disabled ? undefined : onPressRightIcon}
+              hitSlop={{ top: MS(10), bottom: MS(10), left: MS(10), right: MS(10) }}
+              style={styles.rightIconBtn}
+              activeOpacity={0.7}
+            >
+              {rightIcon}
+            </TouchableOpacity>
+          ) : (
+            <Pressable
+              onPress={disabled ? undefined : onPressRightIcon}
+              hitSlop={MS(10)}
+              style={styles.rightIconBtn}
+            >
+              {rightIcon}
+            </Pressable>
+          )
         ) : null}
       </View>
 
@@ -205,7 +237,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    width: MS(40),
+    width: MS(44),
+    zIndex: 20,
+    elevation: 20,
   },
   errorText: {
     marginTop: VS(6),

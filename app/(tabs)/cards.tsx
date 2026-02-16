@@ -440,14 +440,15 @@ const cards = () => {
         <View style={{ justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
           <Animated.FlatList
             data={cardsWithCreate}
-            renderItem={({ item, index }) => {
-              // If it's the create card item, render CreateCardItem
-              if (item.isCreateCard) {
-                return <CreateCardItem index={index} scrollX={scrollX} translateY={translateY} />
-              }
-              // Otherwise render normal CardItem
-              return <CardItem item={item} index={index} scrollX={scrollX} translateY={translateY} safeAreaTop={insets.top} />
-            }}
+            renderItem={({ item, index }) => (
+              <View style={{ width: SCREEN_WIDTH }}>
+                {item.isCreateCard ? (
+                  <CreateCardItem index={index} scrollX={scrollX} translateY={translateY} />
+                ) : (
+                  <CardItem item={item} index={index} scrollX={scrollX} translateY={translateY} safeAreaTop={insets.top} />
+                )}
+              </View>
+            )}
             keyExtractor={(item, index) => {
               if (item.isCreateCard) {
                 return 'create-new-card'
